@@ -31,7 +31,7 @@ const SKILL_KR = {'attack':'일반 공격','power_attack':'강공격','dash_atta
 const mask_names = m => Object.entries(DEC).filter(([b]) => (m >> b) & 1)
                               .map(([, n]) => n).join('|') || '-';
 const _id = s => s.includes('[') ? s.split('[').pop().replace(']', '') : s;
-const _name = (coll, k) => `${coll[k].name || k} [${k}]`;
+const _name = (coll, k) => `${(coll[k] || {}).name || k} [${k}]`;
 const _buff_entry = s => {
   const i = s.lastIndexOf('×');
   const st = i >= 0 ? s.slice(i + 1) : '';
@@ -41,21 +41,42 @@ const $ = id => document.getElementById(id);
 const intv = el => { const v = parseInt(el.value); if (isNaN(v)) throw `숫자 필요: ${el.id}`; return v; };
 const fg = v => `${+Number.parseFloat(Number(v).toPrecision(6))}`;
 
-const LISTS = {};   // datalist full value sets for substring filtering
+const LISTS = {};   // input id -> 전체 후보 목록
 function setList(inputId, vals) { LISTS[inputId] = vals; }
-function filterList(input) {
-  const t = input.value.toLowerCase();
-  const vals = LISTS[input.id] || [];
-  const dl = $(input.getAttribute('list'));
-  dl.innerHTML = '';
-  for (const v of vals.filter(x => x.toLowerCase().includes(t)).slice(0, 300)) {
-    const o = document.createElement('option'); o.value = v; dl.appendChild(o);
-  }
+
+// tkinter Combobox와 동일: 포커스 시 전체 목록, 타이핑 시 필터
+function combo(input, listFn, maxItems = 300) {
+  const wrap = document.createElement('span'); wrap.className = 'combo';
+  input.parentNode.insertBefore(wrap, input);
+  wrap.appendChild(input);
+  const drop = document.createElement('div'); drop.className = 'drop';
+  wrap.appendChild(drop);
+  const render = t => {
+    const vals = listFn(t);
+    drop.innerHTML = '';
+    for (const v of vals.slice(0, maxItems)) {
+      const d = document.createElement('div');
+      d.textContent = v;
+      d.addEventListener('mousedown', e => {
+        e.preventDefault();
+        input.value = v;
+        input.dispatchEvent(new Event('input', {bubbles: true}));
+        hide();
+      });
+      drop.appendChild(d);
+    }
+    drop.style.display = vals.length ? 'block' : 'none';
+  };
+  const show = () => render('');
+  const hide = () => { drop.style.display = 'none'; };
+  input.addEventListener('focus', show);
+  input.addEventListener('click', show);
+  input.addEventListener('input', () => render(input.value));
+  input.addEventListener('keydown', e => { if (e.key === 'Escape') hide(); });
+  input.addEventListener('blur', () => setTimeout(hide, 150));
 }
-function hookSearch(input) {
-  input.addEventListener('input', () => filterList(input));
-  input.addEventListener('focus', () => filterList(input));
-}
+const nameFilter = id => t =>
+  (LISTS[id] || []).filter(v => v.toLowerCase().includes(t.toLowerCase()));
 
 const state = { forge: {}, wskLv: {}, wskVar: {}, wskStk: {}, talVar: {}, extraHits: [] };
 
@@ -67,14 +88,14 @@ function equipRows() {
     const row = document.createElement('div'); row.className = 'row';
     const lab = document.createElement('label'); lab.textContent = pname + ' ';
     const inp = document.createElement('input');
-    const dlid = 'eq' + i; inp.setAttribute('list', dlid); inp.id = 'eq_in' + i;
-    const dl = document.createElement('datalist'); dl.id = dlid;
+    inp.id = 'eq_in' + i;
     const vals = ['(none)', ...Object.keys(D.EQUIPS)
       .filter(k => D.EQUIPS[k].partType === pt)
       .map(k => _name(D.EQUIPS, k))];
-    setList('eq_in' + i, vals); hookSearch(inp); inp.value = '(none)';
+    setList('eq_in' + i, vals); inp.value = '(none)';
     inp.addEventListener('input', () => refreshForge(i));
-    row.append(lab, inp, dl); host.appendChild(row);
+    row.append(lab, inp); host.appendChild(row);
+    combo(inp, nameFilter('eq_in' + i));
     const frow = document.createElement('div'); frow.className = 'row'; frow.id = 'forge' + i;
     host.appendChild(frow);
     state.forge[i] = {};
@@ -176,13 +197,6 @@ function refreshTalents() {
   }
 }
 
-function filterBuffs(input) {
-  const t = input.value;
-  const vals = Object.keys(dc.data().BUFF).sort().filter(b => b.includes(t)).slice(0, 200);
-  const dl = $('buffs'); dl.innerHTML = '';
-  for (const v of vals) { const o = document.createElement('option'); o.value = v; dl.appendChild(o); }
-}
-
 function addBuff(input, listbox, stk) {
   const bid = input.value;
   if (!(bid in dc.data().BUFF)) return;
@@ -213,9 +227,9 @@ function charChanged() {
       return `${base} [${s}]`;
     });
   setList('sid', vals);
-  const dl = $('skills'); dl.innerHTML = '';
-  for (const v of vals) { const o = document.createElement('option'); o.value = v; dl.appendChild(o); }
-  if (vals.length) $('sid').value = vals[0];
+  if (vals.length && !(LISTS.sid || []).includes($('sid').value))
+    $('sid').value = vals[0];
+  if (!vals.length) $('sid').value = '';
   for (const i of Object.keys(state.forge)) refreshForge(+i);
   refreshWsk(); refreshTalents();
   run();
@@ -363,11 +377,11 @@ async function boot() {
     setList('cid', Object.keys(D.CHARS).map(k => _name(D.CHARS, k)));
     setList('wid', Object.keys(D.WPNS).map(k => _name(D.WPNS, k)));
     setList('eid', Object.keys(D.ENEMIES).map(k => _name(D.ENEMIES, k)));
-    for (const id of ['cid', 'wid', 'eid', 'sid']) hookSearch($(id));
-    $('buff_in').addEventListener('input', () => filterBuffs($('buff_in')));
-    $('buff_in').addEventListener('focus', () => filterBuffs($('buff_in')));
-    $('dbuff_in').addEventListener('input', () => filterBuffs($('dbuff_in')));
-    $('dbuff_in').addEventListener('focus', () => filterBuffs($('dbuff_in')));
+    const buffKeys = Object.keys(D.BUFF).sort();
+    const buffFilter = t => buffKeys.filter(b => b.includes(t));
+    for (const id of ['cid', 'wid', 'eid', 'sid']) combo($(id), nameFilter(id));
+    combo($('buff_in'), buffFilter, 200);
+    combo($('dbuff_in'), buffFilter, 200);
     $('buff_add').onclick = () => addBuff($('buff_in'), $('atk_buffs'), $('buff_stk'));
     $('dbuff_add').onclick = () => addBuff($('dbuff_in'), $('def_buffs'), $('dbuff_stk'));
     $('atk_buffs').addEventListener('dblclick', e => e.target.remove());
@@ -383,6 +397,8 @@ async function boot() {
       $(id).addEventListener('change', run);
     equipRows();
     $('cid').value = _name(D.CHARS, 'chr_0002_endminm');
+    const e0 = Object.keys(D.ENEMIES)[0];
+    $('eid').value = _name(D.ENEMIES, e0);
     charChanged();
     $('loading').remove();
   } catch (ex) {

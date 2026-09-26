@@ -33,6 +33,14 @@
   .sub { color: #888; font-size: 11px; }
   .err { color: #ff7b72; }
   .forge { display: inline-flex; gap: 4px; align-items: center; margin: 1px 6px 1px 0; }
+  .combo { position: relative; flex: 1; min-width: 200px; }
+  .combo input { width: 100%; box-sizing: border-box; }
+  .drop { position: absolute; left: 0; right: 0; top: 100%; z-index: 20;
+          max-height: 260px; overflow-y: auto; background: #14161a;
+          border: 1px solid #3a3d45; border-radius: 4px; display: none; }
+  .drop div { padding: 2px 8px; cursor: pointer; white-space: nowrap;
+              overflow: hidden; text-overflow: ellipsis; }
+  .drop div:hover, .drop div.sel { background: #2a4a78; }
   .forge input { width: 34px; }
   .forge .val { width: 62px; display: inline-block; color: #8ab4f8; }
   #loading { position: fixed; inset: 0; display: flex; align-items: center;
@@ -49,13 +57,13 @@
 
 <div class="cols">
   <fieldset><legend>공격자</legend>
-    <div class="row"><input id="cid" list="chars" placeholder="캐릭터"><datalist id="chars"></datalist></div>
+    <div class="row"><input id="cid" placeholder="캐릭터"></div>
     <div class="row">
       <label>레벨 <input id="lv" type="number" min="1" max="90" value="80"></label>
       <label>돌파 <input id="cbrk" type="number" min="0" max="4" value="4"></label>
       <label>잠재 <input id="pot" type="number" min="0" max="6" value="0"></label>
     </div>
-    <div class="row"><input id="wid" list="wpns" placeholder="무기"><datalist id="wpns"></datalist></div>
+    <div class="row"><input id="wid" placeholder="무기"></div>
     <div class="row">
       <label>무기Lv <input id="wlv" type="number" min="1" max="90" value="90"></label>
       <label>무기돌파 <input id="brk" type="number" min="0" max="6" value="4"></label>
@@ -63,8 +71,7 @@
     </div>
     <div id="equip-rows"></div>
     <div class="row"><label>버프</label>
-      <input id="buff_in" list="buffs" class="buffs" placeholder="buff_... (타이핑 필터)">
-      <datalist id="buffs"></datalist>
+      <input id="buff_in" class="buffs" placeholder="buff_... (타이핑 필터)">
       <input id="buff_stk" type="number" min="1" max="99" value="1" title="스택">
       <button id="buff_add">+</button>
     </div>
@@ -78,10 +85,10 @@
   </fieldset>
 
   <fieldset><legend>방어자</legend>
-    <div class="row"><input id="eid" list="enemies" placeholder="적"><datalist id="enemies"></datalist></div>
+    <div class="row"><input id="eid" placeholder="적"></div>
     <div class="row"><label>적Lv <input id="elv" type="number" min="1" max="150" value="80"></label></div>
     <div class="row"><label>추가 버프</label>
-      <input id="dbuff_in" list="buffs" class="buffs">
+      <input id="dbuff_in" class="buffs">
       <input id="dbuff_stk" type="number" min="1" max="99" value="1" title="스택">
       <button id="dbuff_add">+</button>
     </div>
@@ -109,7 +116,7 @@
   </fieldset>
 
   <fieldset><legend>스킬</legend>
-    <div class="row"><input id="sid" list="skills" placeholder="스킬"><datalist id="skills"></datalist></div>
+    <div class="row"><input id="sid" placeholder="스킬"></div>
     <div class="row">
       <label>스킬Lv <input id="slv" type="number" min="1" max="12" value="3"></label>
       <label><input id="extra_on" type="checkbox"> 세트 추가타</label>
