@@ -1,1 +1,135 @@
-<h1>Hello World!</h1>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>엔드필드 데미지 계산기</title>
+<style>
+  :root { color-scheme: dark; }
+  body { font: 13px/1.45 'Malgun Gothic', 'Segoe UI', sans-serif;
+         background: #1b1d22; color: #ddd; margin: 0; padding: 10px; }
+  fieldset { border: 1px solid #3a3d45; border-radius: 6px; margin: 0 0 8px;
+             padding: 8px 10px; background: #23252b; }
+  legend { color: #8ab4f8; font-weight: 600; padding: 0 4px; }
+  label { white-space: nowrap; color: #aab; }
+  input, select, button { background: #14161a; color: #ddd; border: 1px solid #3a3d45;
+                          border-radius: 4px; padding: 2px 5px; font: inherit; }
+  input[type=number] { width: 52px; }
+  input[list] { width: 100%; min-width: 260px; }
+  button { cursor: pointer; padding: 2px 10px; }
+  button:hover { background: #2a2d33; }
+  .cols { display: grid; grid-template-columns: 340px 400px 300px 1fr;
+          gap: 8px; align-items: start; }
+  .row { display: flex; gap: 6px; align-items: center; margin: 3px 0; flex-wrap: wrap; }
+  .buffs { width: 100%; min-width: 260px; }
+  select[multiple] { width: 100%; height: 74px; }
+  #stats { width: 380px; min-height: 480px; font-family: 'Consolas','Malgun Gothic',monospace;
+           font-size: 12px; white-space: pre; overflow: auto; background:#14161a;
+           border:1px solid #3a3d45; border-radius:4px; padding:8px; margin:0; }
+  #hits { border-collapse: collapse; min-width: 560px; }
+  #hits th, #hits td { border: 1px solid #33363d; padding: 3px 8px; text-align: right; }
+  #hits th { background: #262930; position: sticky; top: 0; }
+  #hits td:nth-child(2), #hits td:nth-child(3) { text-align: left; }
+  .out { display: flex; gap: 10px; align-items: flex-start; }
+  .sub { color: #888; font-size: 11px; }
+  .err { color: #ff7b72; }
+  .forge { display: inline-flex; gap: 4px; align-items: center; margin: 1px 6px 1px 0; }
+  .forge input { width: 34px; }
+  .forge .val { width: 62px; display: inline-block; color: #8ab4f8; }
+  #loading { position: fixed; inset: 0; display: flex; align-items: center;
+             justify-content: center; background: #1b1d22; font-size: 15px; z-index: 9; }
+  .tal-row, .wsk-row { display: flex; gap: 6px; align-items: center; margin: 2px 0;
+                       flex-wrap: wrap; }
+  .tal-row input[type=number], .wsk-row input[type=number] { width: 40px; }
+  .wsk-name { width: 170px; display: inline-block; overflow: hidden;
+              text-overflow: ellipsis; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="loading">데이터 로딩 중… (약 12MB)</div>
+
+<div class="cols">
+  <fieldset><legend>공격자</legend>
+    <div class="row"><input id="cid" list="chars" placeholder="캐릭터"><datalist id="chars"></datalist></div>
+    <div class="row">
+      <label>레벨 <input id="lv" type="number" min="1" max="90" value="80"></label>
+      <label>돌파 <input id="cbrk" type="number" min="0" max="4" value="4"></label>
+      <label>잠재 <input id="pot" type="number" min="0" max="6" value="0"></label>
+    </div>
+    <div class="row"><input id="wid" list="wpns" placeholder="무기"><datalist id="wpns"></datalist></div>
+    <div class="row">
+      <label>무기Lv <input id="wlv" type="number" min="1" max="90" value="90"></label>
+      <label>무기돌파 <input id="brk" type="number" min="0" max="6" value="4"></label>
+      <label>무기재능 <input id="tal" type="number" min="0" max="6" value="0"></label>
+    </div>
+    <div id="equip-rows"></div>
+    <div class="row"><label>버프</label>
+      <input id="buff_in" list="buffs" class="buffs" placeholder="buff_... (타이핑 필터)">
+      <datalist id="buffs"></datalist>
+      <input id="buff_stk" type="number" min="1" max="99" value="1" title="스택">
+      <button id="buff_add">+</button>
+    </div>
+    <select id="atk_buffs" multiple title="더블클릭으로 삭제"></select>
+    <fieldset><legend>무기 기질</legend><div id="wsk"></div></fieldset>
+    <div class="row">
+      <label><input id="suit_buff" type="checkbox" checked> 세트 버프 적용</label>
+      <label><input id="cond" type="checkbox"> 조건부 존 버프 적용</label>
+    </div>
+    <fieldset><legend>재능 버프</legend><div id="talents"></div></fieldset>
+  </fieldset>
+
+  <fieldset><legend>방어자</legend>
+    <div class="row"><input id="eid" list="enemies" placeholder="적"><datalist id="enemies"></datalist></div>
+    <div class="row"><label>적Lv <input id="elv" type="number" min="1" max="150" value="80"></label></div>
+    <div class="row"><label>추가 버프</label>
+      <input id="dbuff_in" list="buffs" class="buffs">
+      <input id="dbuff_stk" type="number" min="1" max="99" value="1" title="스택">
+      <button id="dbuff_add">+</button>
+    </div>
+    <select id="def_buffs" multiple title="더블클릭으로 삭제"></select>
+    <div class="row">
+      <label><input id="broken" type="checkbox"> 불균형 상태</label>
+      <label><input id="crit" type="checkbox"> 치명타(전체)</label>
+      <label><input id="weak" type="checkbox"> 허약</label>
+      <label>발동타
+        <select id="proc">
+          <option>없음</option><option>띄우기</option><option>넘어뜨리기</option>
+          <option>강타</option><option>갑옷 파괴</option><option>이상 초기피해</option>
+          <option>쇄빙</option><option>아츠 폭발</option><option>연소 지속</option>
+        </select></label>
+      <input id="proc_stacks" type="number" min="1" max="4" value="2" title="스택">
+    </div>
+    <div class="row">
+      <label>이상 상태
+        <select id="inflict">
+          <option>없음</option><option>방어 불능 상태</option><option>이상 발동</option>
+        </select></label>
+      <label>치명타 타격 <input id="crit_hits" type="text" style="width:80px" placeholder="예: 1,3"></label>
+      <label>수동배율 <input id="mmul" type="number" min="0.1" max="10" step="0.05" value="1"></label>
+    </div>
+  </fieldset>
+
+  <fieldset><legend>스킬</legend>
+    <div class="row"><input id="sid" list="skills" placeholder="스킬"><datalist id="skills"></datalist></div>
+    <div class="row">
+      <label>스킬Lv <input id="slv" type="number" min="1" max="12" value="3"></label>
+      <label><input id="extra_on" type="checkbox"> 세트 추가타</label>
+      <span id="extra_lbl" class="sub">(세트 없음)</span>
+    </div>
+    <button id="run" style="margin-top:6px">계산</button>
+  </fieldset>
+
+  <fieldset><legend>결과</legend>
+    <div class="out">
+      <pre id="stats"></pre>
+      <table id="hits">
+        <thead><tr><th>#</th><th>속성</th><th>히트</th><th>배율</th>
+        <th>공격력×배율</th><th>존배율</th><th>데미지</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </fieldset>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
