@@ -39,7 +39,8 @@
   .combo input { width: 100%; box-sizing: border-box; }
   .drop { position: absolute; left: 0; right: 0; top: 100%; z-index: 20;
           max-height: 260px; overflow-y: auto; background: #14161a;
-          border: 1px solid #3a3d45; border-radius: 4px; display: none; }
+          border: 1px solid #3a3d45; border-radius: 4px; display: none;
+          touch-action: pan-y; -webkit-overflow-scrolling: touch; }
   .drop div { padding: 2px 8px; cursor: pointer; white-space: nowrap;
               overflow: hidden; text-overflow: ellipsis; }
   .drop div:hover, .drop div.sel { background: #2a4a78; }
@@ -152,6 +153,6 @@
     </div>
   </fieldset>
 
-<script type="module" src="app.js?v=5"></script>
+<script type="module" src="app.js?v=6"></script>
 </body>
 </html>

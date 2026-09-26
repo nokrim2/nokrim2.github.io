@@ -1,4 +1,4 @@
-import * as dc from './calc.js?v=5';
+import * as dc from './calc.js?v=6';
 
 const DEC = {0:'불균형',1:'가드회피무시',2:'강공격',3:'열기부착',4:'전기부착',
 5:'냉기부착',6:'이상부여',7:'일반공격',8:'배틀스킬',9:'궁극기',10:'낙하공격',
@@ -57,8 +57,7 @@ function combo(input, listFn, maxItems = 300) {
     for (const v of vals.slice(0, maxItems)) {
       const d = document.createElement('div');
       d.textContent = v;
-      d.addEventListener('pointerdown', e => {
-        e.preventDefault();
+      d.addEventListener('click', e => {
         input.value = v;
         input.dispatchEvent(new Event('input', {bubbles: true}));
         hide();
@@ -69,11 +68,16 @@ function combo(input, listFn, maxItems = 300) {
   };
   const show = () => render('');
   const hide = () => { drop.style.display = 'none'; };
+  let touching = false;
+  drop.addEventListener('pointerdown', () => { touching = true; });
+  document.addEventListener('pointerup', () => { touching = false; });
   input.addEventListener('focus', show);
   input.addEventListener('click', show);
   input.addEventListener('input', () => render(input.value));
   input.addEventListener('keydown', e => { if (e.key === 'Escape') hide(); });
-  input.addEventListener('blur', () => setTimeout(hide, 150));
+  input.addEventListener('blur', () => {
+    setTimeout(() => { if (!touching && !drop.contains(document.activeElement)) hide(); }, 250);
+  });
 }
 const nameFilter = id => t =>
   (LISTS[id] || []).filter(v => v.toLowerCase().includes(t.toLowerCase()));
