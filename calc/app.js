@@ -1,4 +1,4 @@
-import * as dc from './calc.js?v=4';
+import * as dc from './calc.js?v=5';
 
 const DEC = {0:'불균형',1:'가드회피무시',2:'강공격',3:'열기부착',4:'전기부착',
 5:'냉기부착',6:'이상부여',7:'일반공격',8:'배틀스킬',9:'궁극기',10:'낙하공격',
@@ -57,7 +57,7 @@ function combo(input, listFn, maxItems = 300) {
     for (const v of vals.slice(0, maxItems)) {
       const d = document.createElement('div');
       d.textContent = v;
-      d.addEventListener('mousedown', e => {
+      d.addEventListener('pointerdown', e => {
         e.preventDefault();
         input.value = v;
         input.dispatchEvent(new Event('input', {bubbles: true}));
@@ -386,6 +386,9 @@ async function boot() {
     $('dbuff_add').onclick = () => addBuff($('dbuff_in'), $('def_buffs'), $('dbuff_stk'));
     $('atk_buffs').addEventListener('dblclick', e => e.target.remove());
     $('def_buffs').addEventListener('dblclick', e => e.target.remove());
+    const delSel = lb => [...lb.selectedOptions].forEach(o => o.remove());
+    $('atk_buff_del').onclick = () => delSel($('atk_buffs'));
+    $('def_buff_del').onclick = () => delSel($('def_buffs'));
     $('cid').addEventListener('input', charChanged);
     $('wid').addEventListener('input', refreshWsk);
     $('cbrk').addEventListener('input', refreshTalents);

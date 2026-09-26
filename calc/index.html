@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>엔드필드 데미지 계산기</title>
 <style>
   :root { color-scheme: dark; }
@@ -51,6 +52,17 @@
   .tal-row input[type=number], .wsk-row input[type=number] { width: 40px; }
   .wsk-name { width: 170px; display: inline-block; overflow: hidden;
               text-overflow: ellipsis; white-space: nowrap; }
+  .del-row { margin: 2px 0 8px; text-align: right; }
+  .del-row button { font-size: 11px; color: #f88; }
+  @media (max-width: 640px) {
+    body { padding: 6px; font-size: 14px; }
+    input, select, button { font-size: 16px; padding: 5px 7px; }
+    input[type=number] { width: 60px; }
+    .combo { min-width: 0; }
+    #stats { width: 100%; min-width: 0; min-height: 200px; }
+    #hits { min-width: 0; font-size: 12px; }
+    .tal-row input[type=number], .wsk-row input[type=number] { width: 52px; }
+  }
 </style>
 </head>
 <body>
@@ -77,6 +89,7 @@
       <button id="buff_add">+</button>
     </div>
     <select id="atk_buffs" multiple title="더블클릭으로 삭제"></select>
+    <div class="del-row"><button id="atk_buff_del" type="button">선택 삭제</button></div>
     <fieldset><legend>무기 기질</legend><div id="wsk"></div></fieldset>
     <div class="row">
       <label><input id="suit_buff" type="checkbox" checked> 세트 버프 적용</label>
@@ -94,6 +107,7 @@
       <button id="dbuff_add">+</button>
     </div>
     <select id="def_buffs" multiple title="더블클릭으로 삭제"></select>
+    <div class="del-row"><button id="def_buff_del" type="button">선택 삭제</button></div>
     <div class="row">
       <label><input id="broken" type="checkbox"> 불균형 상태</label>
       <label><input id="crit" type="checkbox"> 치명타(전체)</label>
@@ -138,6 +152,6 @@
     </div>
   </fieldset>
 
-<script type="module" src="app.js?v=4"></script>
+<script type="module" src="app.js?v=5"></script>
 </body>
 </html>
