@@ -1,4 +1,4 @@
-import * as dc from './calc.js?v=3';
+import * as dc from './calc.js?v=4';
 
 const DEC = {0:'불균형',1:'가드회피무시',2:'강공격',3:'열기부착',4:'전기부착',
 5:'냉기부착',6:'이상부여',7:'일반공격',8:'배틀스킬',9:'궁극기',10:'낙하공격',
@@ -369,7 +369,7 @@ async function boot() {
     const [char, enemy, skill, buff, ss] = await Promise.all(
       ['char_index.json', 'enemy_index.json', 'skill_index.json',
        'buff_index.json', 'skillsetting.json']
-        .map(f => fetch('data/' + f).then(r => {
+        .map(f => fetch('../data/' + f).then(r => {
           if (!r.ok) throw new Error(f + ' ' + r.status); return r.json();
         })));
     dc.initData(char, enemy, skill, buff, ss);
