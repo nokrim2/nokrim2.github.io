@@ -20,6 +20,9 @@
   button:hover { background: #2a2d33; }
   .cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
           gap: 8px; align-items: start; }
+  .cols > * { min-width: 0; }
+  /* long comma-joined buff id strings must be allowed to wrap */
+  .wsk-row .sub, .tal-row .sub, .tal-row label { overflow-wrap: anywhere; word-break: break-all; }
   .result-wrap { overflow-x: auto; }
   .row { display: flex; gap: 6px; align-items: center; margin: 3px 0; flex-wrap: wrap; }
   .buffs { width: 100%; min-width: 260px; }
@@ -153,6 +156,6 @@
     </div>
   </fieldset>
 
-<script type="module" src="app.js?v=6"></script>
+<script type="module" src="app.js?v=7"></script>
 </body>
 </html>
