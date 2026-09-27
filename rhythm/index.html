@@ -20,7 +20,11 @@
            image-rendering: pixelated; }
   .overlay { position: absolute; inset: 0; background: rgba(0,0,0,.82);
              display: flex; flex-direction: column; align-items: center; justify-content: center;
-             gap: 12px; text-align: center; }
+             gap: 12px; text-align: center; padding: 16px 6px; }
+  /* menu can be taller than the canvas on phones: scroll instead of clipping */
+  #menu { justify-content: flex-start; overflow-y: auto; }
+  #menu > :first-child { margin-top: auto; }
+  #menu > :last-child  { margin-bottom: auto; }
   .hidden { display: none !important; }
   .songbtn { background: none; border: 2px solid #333; color: #ddd; font-family: inherit;
              font-size: 32px; padding: 12px 18px; width: min(84%, 460px); cursor: pointer;
@@ -34,6 +38,17 @@
   .dim { color: #888; font-size: 24px; line-height: 1.7; }
   #rank { font-size: 110px; margin: 6px 0; }
   a { color: #4A7CE8; font-size: 20px; }
+  @media (max-width: 640px){
+    h1 { font-size: 24px; }
+    .overlay { gap: 8px; }
+    .songbtn { font-size: 22px; padding: 9px 12px; width: min(88%, 420px); }
+    .songbtn small { font-size: 14px; }
+    .songbtn.calib { font-size: 16px; width: min(76%, 320px); }
+    .big { font-size: 32px; }
+    .dim { font-size: 16px; }
+    #rank { font-size: 64px; }
+    a { font-size: 15px; }
+  }
 </style>
 </head>
 <body>
