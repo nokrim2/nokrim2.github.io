@@ -96,6 +96,22 @@ async function start(sid){
     G.solo = {con:0, diff:-1, ts:s.ts, solo:chart.solo, finale:chart.finale, tAudioNext:null};
   }
   G.notes = noteSrc.map(n => ({t:n[0], lane:n[1], end:n[2], anim:n[3], alive:true, score:0}));
+  // side boards (drums x=170 / vocals x=470 in the original 640-wide room):
+  // auto-played visual accompaniment; flat [t,lane,end,anim] lists
+  G.side = null;
+  {
+    const mk = raw => raw && raw.length ? {notes: raw.map(a => ({t:a[0], lane:a[1], end:a[2]})),
+                                           min:0, hitT:[0,0,0], holds:[]} : null;
+    const d = mk(CHARTS[sid] && CHARTS[sid].drums), v = mk(CHARTS[sid] && CHARTS[sid].vocals);
+    if(d || v) G.side = {drums:d, vocals:v};
+  }
+  // chart event lines (BPM/TS/NS) — each instrument file may carry its own;
+  // beat grid uses lead's tempo map, scroll speed is per-board
+  const EV = CHARTS[sid].events || {};
+  G.evNs  = (EV.lead   && EV.lead.ns)   || null;
+  G.evNsD = (EV.drums  && EV.drums.ns)  || null;
+  G.evNsV = (EV.vocals && EV.vocals.ns) || null;
+  G.grid = buildGrid(s, EV.lead || {});
   G.trackpos = s.trackstart; G.remT = Array(5).fill(s.trackstart);
   G.minnote = 0; G.combo = 0; G.maxCombo = 0; G.points = 0;
   G.great = 0; G.good = 0; G.miss = 0; G.fame = FAME0;
@@ -395,6 +411,34 @@ function rrect(x, y, w, h, r){
   ctx.roundRect(x, y, w, h, r);
 }
 
+// Beat-grid table for BPM/TS event segments (draw_backing's per-segment
+// _posoffset logic, precomputed): each segment anchors beats at its start
+// time, bars every `signature` beats within the segment.
+function buildGrid(s, ev){
+  const bpmEv = ev.bpm || [], tsEv = ev.ts || [];
+  const cuts = [...new Set([0, ...bpmEv.map(e=>e[0]), ...tsEv.map(e=>e[0])])].sort((a,b)=>a-b);
+  const grid = [];
+  let bpm = s.bpm, sig = 4;
+  const tEnd = s.length + 10;
+  for(let i = 0; i < cuts.length; i++){
+    const t0 = cuts[i], t1 = i+1 < cuts.length ? cuts[i+1] : tEnd;
+    for(const [t,v] of bpmEv) if(Math.abs(t - t0) < 1e-9) bpm = v;
+    for(const [t,v] of tsEv)  if(Math.abs(t - t0) < 1e-9) sig = v;
+    const spb = 60/bpm;
+    for(let k = Math.floor((Math.min(0, s.trackstart) - 4*spb - t0)/spb); t0 + k*spb < t1; k++){
+      grid.push({t: t0 + k*spb, bar: ((k % sig) + sig) % sig === 0});
+    }
+  }
+  return grid.sort((a,b)=>a.t-b.t);
+}
+// current scroll speed: NS events rescale the whole field instantly,
+// same as the original (notey uses the live notespeed each frame)
+function speedAt(ev, tp, dflt){
+  let v = dflt;
+  if(ev) for(const [t, s] of ev){ if(tp >= t) v = s; else break; }
+  return v;
+}
+
 // scr_rhythmgame_noteskip port: shift note times across a pending/done section
 // jump so the chart scrolls continuously instead of vanishing / teleporting.
 function noteskip(t, tp){
@@ -414,6 +458,98 @@ function noteskip(t, tp){
   return t;
 }
 
+// side board centers: original 640-wide room has drums=170 / vocals=470
+const SIDE_OFF = 175, SIDE_HALF = 42;
+const SIDE_COLORS = ["#01EA9E", "#17EEFF", "#FF9A3D"];   // drums lanes 0/1, vocals 0/1/2
+const sideLaneX = (cx, kind, l) =>
+  kind === "vocals" ? cx + (l - 1) * 30 : cx + (l ? 20 : -20);
+
+function drawSide(cx, kind, tr, tpDraw, ns){
+  const half = SIDE_HALF;
+  ctx.fillStyle = "rgba(0,0,0,0.75)";
+  ctx.fillRect(cx-half, BOTTOM_Y-400, half*2, 450);
+  for(const gl of G.grid){
+    const y = BOTTOM_Y - (gl.t - tpDraw)*ns;
+    if(y < BOTTOM_Y-400) break;
+    if(y > BOTTOM_Y+50) continue;
+    ctx.fillStyle = gl.bar ? "#777" : "#3a3a3a";
+    ctx.fillRect(cx-half, y-1, half*2, gl.bar ? 2 : 1);
+  }
+  ctx.strokeStyle = "#17EEFF"; ctx.lineWidth = 2;
+  ctx.strokeRect(cx-half, BOTTOM_Y-400, half*2, 450);
+
+  // auto-play: consume notes as their raw time passes the line
+  while(tr.min < tr.notes.length && tr.notes[tr.min].t < tpDraw - 0.12){
+    const n = tr.notes[tr.min++];
+    tr.hitT[Math.min(n.lane, 2)] = 0.18;
+    if(n.end > n.t) tr.holds.push(n);
+  }
+  tr.holds = tr.holds.filter(n => n.end > tpDraw);
+
+  // receptors
+  if(kind === "drums"){
+    for(let i = 0; i < 2; i++){
+      const x = sideLaneX(cx, kind, i), hit = tr.hitT[i] > 0;
+      ctx.strokeStyle = hit ? "#FFED72" : SIDE_COLORS[i];
+      ctx.lineWidth = hit ? 3 : 2;
+      rrect(x-19, BOTTOM_Y-9, 38, 18, 6); ctx.stroke();
+      if(hit){ ctx.fillStyle = "rgba(255,237,114,0.3)"; rrect(x-19, BOTTOM_Y-9, 38, 18, 6); ctx.fill(); }
+    }
+    if(tr.hitT[2] > 0){   // kick hit flashes the whole board line
+      ctx.fillStyle = "rgba(255,154,61,0.35)";
+      ctx.fillRect(cx-half, BOTTOM_Y-10, half*2, 20);
+    }
+  } else {
+    ctx.fillStyle = "#000"; ctx.fillRect(cx-half+2, BOTTOM_Y-4, half*2-4, 8);
+    ctx.fillStyle = "#FF9A3D"; ctx.fillRect(cx-half+2, BOTTOM_Y-2, half*2-4, 4);
+    for(let i = 0; i < 3; i++) if(tr.hitT[i] > 0){
+      ctx.fillStyle = "rgba(255,237,114,0.85)";
+      const x = sideLaneX(cx, kind, i);
+      rrect(x-11, BOTTOM_Y-8, 22, 16, 5); ctx.fill();
+    }
+  }
+  for(let i = 0; i < 3; i++) if(tr.hitT[i] > 0) tr.hitT[i] -= 1/60;
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(cx-half, BOTTOM_Y-400, half*2, 450); ctx.clip();
+  const drawSideNote = (n, y) => {
+    const l = Math.min(n.lane, 2);
+    ctx.fillStyle = SIDE_COLORS[l];
+    if(kind === "drums"){
+      if(l === 2){ ctx.fillRect(cx-half+3, y-3, half*2-6, 6); return; } // kick bar
+      const x = sideLaneX(cx, kind, l);
+      rrect(x-19, y-6, 38, 12, 6); ctx.fill();
+    } else {
+      const x = sideLaneX(cx, kind, l);
+      if(n.end > n.t){ rrect(x-11, y-6, 22, 12, 6); ctx.fill(); }
+      else { ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI*2); ctx.fill(); } // clap
+    }
+  };
+  for(let i = tr.min; i < tr.notes.length; i++){
+    const n = tr.notes[i];
+    const y = BOTTOM_Y - (noteskip(n.t, tpDraw) - tpDraw)*ns;
+    if(y < BOTTOM_Y-430) break;
+    if(y > BOTTOM_Y+70) continue;
+    if(n.end > n.t){
+      const yEnd = BOTTOM_Y - (noteskip(n.end, tpDraw) - tpDraw)*ns;
+      const x = sideLaneX(cx, kind, Math.min(n.lane, 2));
+      ctx.fillStyle = "#e8a000";
+      ctx.fillRect(x-4, yEnd, 8, y - yEnd);
+      ctx.fillStyle = "#FFED72";
+      rrect(x-11, yEnd-5, 22, 10, 5); ctx.fill();
+    }
+    drawSideNote(n, y);
+  }
+  for(const n of tr.holds){
+    const yEnd = BOTTOM_Y - (noteskip(n.end, tpDraw) - tpDraw)*ns;
+    const x = sideLaneX(cx, kind, Math.min(n.lane, 2));
+    ctx.fillStyle = "#FFED72";
+    ctx.fillRect(x-4, yEnd, 8, BOTTOM_Y - yEnd);
+    rrect(x-11, yEnd-5, 22, 10, 5); ctx.fill();
+  }
+  ctx.restore();
+}
+
 function draw(){
   ctx.fillStyle = "#06060c"; ctx.fillRect(0,0,W,H);
   // stage backdrop tint by fame
@@ -422,28 +558,24 @@ function draw(){
   ctx.fillRect(0,0,W,H*0.55);
 
   if(G.mode === "play" || G.mode === "done" || G.mode === "fail"){
-    const s = G.song, ns = s.notespeed;
+    const s = G.song;
     const tpDraw = G.trackpos - G.lat;   // notes line up with what you HEAR
+    const ns = speedAt(G.evNs, tpDraw, s.notespeed);
     const so = G.solo;
 
     // --- backing: beat grid (draw_backing port) ---
     ctx.fillStyle = "rgba(0,0,0,0.75)";
-    ctx.fillRect(CX-80, BOTTOM_Y-400, 160, 500);
-    const spb = 60/s.bpm, meter = spb*4;
-    // scrolling grid: bar lines thicker each `signature` beats, thin lines each beat
-    const gridStart = BOTTOM_Y + (((tpDraw % meter) + meter) % meter) * ns;
-    for(let k = -1; k < 40; k++){
-      const y = gridStart - k*spb*ns;
+    ctx.fillRect(CX-80, BOTTOM_Y-400, 160, 450);
+    for(const gl of G.grid){
+      const y = BOTTOM_Y - (gl.t - tpDraw)*ns;
       if(y < BOTTOM_Y-400) break;
-      if(y > BOTTOM_Y+100) continue;
-      const beatPos = tpDraw + (BOTTOM_Y - y)/ns;
-      const isBar = Math.abs(((beatPos % meter)+meter)%meter) < 0.001 || Math.abs((((beatPos % meter)+meter)%meter)-meter) < 0.001;
-      ctx.fillStyle = isBar ? "#777" : "#3a3a3a";
-      ctx.fillRect(CX-80, y-1, 160, isBar ? 2 : 1);
+      if(y > BOTTOM_Y+50) continue;
+      ctx.fillStyle = gl.bar ? "#777" : "#3a3a3a";
+      ctx.fillRect(CX-80, y-1, 160, gl.bar ? 2 : 1);
     }
     // panel border (cyan like in-game)
     ctx.strokeStyle = "#17EEFF"; ctx.lineWidth = 2;
-    ctx.strokeRect(CX-80, BOTTOM_Y-400, 160, 500);
+    ctx.strokeRect(CX-80, BOTTOM_Y-400, 160, 450);
 
     // --- note receptors: outlined rounded rects at hit line (in-game look) ---
     for(let i = 0; i < 2; i++){
@@ -458,15 +590,21 @@ function draw(){
       if(G.lastLaneHit[i] > 0) G.lastLaneHit[i] -= 1/60;
     }
 
+    // --- side boards (auto-played, like obj_rhythmgame_chart instances) ---
+    if(G.side){
+      if(G.side.drums)  drawSide(CX - SIDE_OFF, "drums",  G.side.drums,  tpDraw, speedAt(G.evNsD, tpDraw, s.notespeed));
+      if(G.side.vocals) drawSide(CX + SIDE_OFF, "vocals", G.side.vocals, tpDraw, speedAt(G.evNsV, tpDraw, s.notespeed));
+    }
+
     // --- notes (clipped to panel) ---
     ctx.save();
-    ctx.beginPath(); ctx.rect(CX-80, BOTTOM_Y-400, 160, 500); ctx.clip();
+    ctx.beginPath(); ctx.rect(CX-80, BOTTOM_Y-400, 160, 450); ctx.clip();
     for(let i = Math.max(0, G.minnote-4); i < G.notes.length; i++){
       const n = G.notes[i];
       const dt0 = noteskip(n.t, tpDraw);
       const y = BOTTOM_Y - (dt0 - tpDraw)*ns;
       if(y < BOTTOM_Y-430) break;
-      if(y > BOTTOM_Y+120) continue;
+      if(y > BOTTOM_Y+70) continue;
       const x = laneX(n.lane);
       if(n.end > 0 && n.alive){
         const yEnd = BOTTOM_Y - (noteskip(n.end, tpDraw) - tpDraw)*ns;
@@ -549,7 +687,7 @@ function draw(){
     }
     if(G.trackpos < 0){
       ctx.fillStyle = "#888"; ctx.font = "26px DRText, monospace"; ctx.textAlign = "center";
-      ctx.fillText("READY...", CX, BOTTOM_Y + 80);
+      ctx.fillText("READY...", CX, BOTTOM_Y + 30);
     }
   }
 }
@@ -568,9 +706,9 @@ async function boot(){
   try{ G.offset = parseFloat(localStorage.getItem("rhythm_offset")) || 0; }catch(e){}
   try{ await document.fonts.load('32px DRText'); }catch(e){}
   [SONGS, CHARTS, LYRICS] = await Promise.all([
-    fetch("songs.json").then(r=>r.json()),
-    fetch("charts.json").then(r=>r.json()),
-    fetch("lyrics.json").then(r=>r.json()).catch(()=>({})),
+    fetch("songs.json?v=18").then(r=>r.json()),
+    fetch("charts.json?v=18").then(r=>r.json()),
+    fetch("lyrics.json?v=18").then(r=>r.json()).catch(()=>({})),
   ]);
   const list = $("songlist");
   for(const [sid, s] of Object.entries(SONGS)){
@@ -584,6 +722,12 @@ async function boot(){
     list.appendChild(b);
   }
   $("calib").onclick = () => start("3");
+  const offin = $("offin");
+  offin.value = Math.round(G.offset * 1000);
+  $("offset_set").onclick = () => {
+    const ms = parseFloat(offin.value);
+    if(!isNaN(ms)){ G.offset = Math.round(ms) / 1000; saveOffset(); }
+  };
   requestAnimationFrame(t => { last = t; frame(t); });
 }
 $("retry").onclick = () => start(G.sid);
