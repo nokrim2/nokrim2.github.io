@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RHYTHM</title>
+<style>
+  @font-face {
+    font-family: "DRText";
+    src: url("font/fnt_maintext16.ttf") format("truetype");
+    font-display: swap;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #000; color: #fff; font-family: "DRText", monospace;
+         display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+         user-select: none; -webkit-user-select: none; }
+  h1 { font-size: 36px; letter-spacing: 6px; color: #888; margin: 12px 0 6px; }
+  #wrap { position: relative; width: min(98vw, calc(88vh * 0.7647)); }
+  canvas { width: 100%; height: auto; display: block; background: #06060c; touch-action: none;
+           image-rendering: pixelated; }
+  .overlay { position: absolute; inset: 0; background: rgba(0,0,0,.82);
+             display: flex; flex-direction: column; align-items: center; justify-content: center;
+             gap: 12px; text-align: center; }
+  .hidden { display: none !important; }
+  .songbtn { background: none; border: 2px solid #333; color: #ddd; font-family: inherit;
+             font-size: 32px; padding: 12px 18px; width: min(84%, 460px); cursor: pointer;
+             letter-spacing: 1px; }
+  .songbtn:hover, .songbtn:focus { border-color: #17EEFF; color: #17EEFF; }
+  .songbtn.calib { font-size: 22px; padding: 10px 14px; width: min(70%, 360px);
+                   border-style: dashed; color: #9ADCFF; border-color: #2a3a55; }
+  .songbtn.calib:hover, .songbtn.calib:focus { border-color: #9ADCFF; color: #9ADCFF; }
+  .songbtn small { color: #666; font-size: 20px; }
+  .big { font-size: 48px; color: #FFED72; }
+  .dim { color: #888; font-size: 24px; line-height: 1.7; }
+  #rank { font-size: 110px; margin: 6px 0; }
+  a { color: #4A7CE8; font-size: 20px; }
+</style>
+</head>
+<body>
+<h1>RHYTHM</h1>
+<div id="wrap">
+  <canvas id="cv" width="1040" height="1360"></canvas>
+
+  <div id="menu" class="overlay">
+    <div class="dim">* A mysterious jukebox appears.</div>
+    <div id="songlist"></div>
+    <button class="songbtn calib" id="calib">OFFSET CALIBRATION <small>타이밍 보정</small></button>
+    <div class="dim" id="loadmsg"></div>
+    <div class="dim">←→ / Z X / D K · 홀드는 길게 누르기<br>모바일: 좌우 터치</div>
+    <a href="../">← 허브로</a>
+  </div>
+
+  <div id="result" class="overlay hidden">
+    <div class="dim" id="rSong"></div>
+    <div id="rank"></div>
+    <div class="dim" id="rStats"></div>
+    <button class="songbtn" id="retry">RETRY</button>
+    <button class="songbtn" id="back">SONG LIST</button>
+  </div>
+</div>
+<script src="rhythm.js?v=9"></script>
+</body>
+</html>
