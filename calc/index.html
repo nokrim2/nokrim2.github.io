@@ -98,6 +98,7 @@
     <div class="row">
       <label><input id="suit_buff" type="checkbox" checked> 세트 버프 적용</label>
       <label><input id="cond" type="checkbox"> 조건부 존 버프 적용</label>
+      <label><input id="weak" type="checkbox" title="허약: 보유자의 주는 피해 -20% (attr62)"> 허약</label>
     </div>
     <fieldset><legend>재능 버프</legend><div id="talents"></div></fieldset>
   </fieldset>
@@ -115,7 +116,7 @@
     <div class="row">
       <label><input id="broken" type="checkbox"> 불균형 상태</label>
       <label><input id="crit" type="checkbox"> 치명타(전체)</label>
-      <label><input id="weak" type="checkbox"> 허약</label>
+      <label><input id="blocked" type="checkbox"> 가드 중</label>
       <label>발동타
         <select id="proc">
           <option>없음</option><option>띄우기</option><option>넘어뜨리기</option>
@@ -150,12 +151,12 @@
       <pre id="stats"></pre>
       <table id="hits">
         <thead><tr><th>#</th><th>속성</th><th>히트</th><th>배율</th>
-        <th>공격력×배율</th><th>존배율</th><th>데미지</th></tr></thead>
+        <th>공격력×배율</th><th>존배율</th><th>데미지</th><th>불균형</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
   </fieldset>
 
-<script type="module" src="app.js?v=7"></script>
+<script type="module" src="app.js?v=8"></script>
 </body>
 </html>

@@ -172,7 +172,7 @@ function refreshWsk() {
         row.appendChild(st); state.wskStk[sid] = st;
       }
       const bl = document.createElement('span'); bl.className = 'sub';
-      bl.textContent = bids.join(','); row.appendChild(bl);
+      bl.textContent = bids.join(', '); row.appendChild(bl);
       state.wskVar[sid] = cb;
     }
     host.appendChild(row);
@@ -332,6 +332,7 @@ function run() {
                     : $('crit').checked;
     const kw = {broken: $('broken').checked, crit,
                 cond: $('cond').checked, weak: $('weak').checked,
+                blocked: $('blocked').checked,
                 inflict, inflict_proc: proc_kind,
                 inflict_stacks: parseInt($('proc_stacks').value) || 1,
                 manual_mul: parseFloat($('mmul').value) || 1};
@@ -358,7 +359,8 @@ function run() {
                      Number(h.scale).toPrecision(3),
                      h.calcResult.toFixed(0),
                      h.zoneScale.toPrecision(3),
-                     `${Math.trunc(h.damage + 0.5)} (${h.damage.toFixed(1)})`];
+                     `${Math.trunc(h.damage + 0.5)} (${h.damage.toFixed(1)})`,
+                     h.poise ? h.poise.toFixed(1) : '—'];
       for (const v of cells) { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); }
       tb.appendChild(tr);
     });
@@ -400,7 +402,7 @@ async function boot() {
     for (const id of ['lv','cbrk','pot','wlv','brk','tal','elv','slv','proc_stacks',
                       'mmul','crit_hits','proc','inflict'])
       $(id).addEventListener('input', run);
-    for (const id of ['broken','crit','weak','suit_buff','cond','extra_on'])
+    for (const id of ['broken','crit','weak','blocked','suit_buff','cond','extra_on'])
       $(id).addEventListener('change', run);
     equipRows();
     $('cid').value = _name(D.CHARS, 'chr_0002_endminm');

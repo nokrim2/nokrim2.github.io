@@ -53,6 +53,11 @@ const INJECT = {dmg: 'NormalCalcZone', ignite: 'AbnormalAndBurstIncrease',
                 enh: 'EnhancedDmgIncreace', vul: 'VulnerableDmgIncreace'};
 const IGNITE_SET = 0xFD00038;
 const PHYS_INFLICT = 0x4001C000;
+// AttributeMetaTable 비0 기본값 (poise 스냅샷 오버레이의 누락 속성 시작값)
+const ATTR_DEFAULT = {1:1, 2:10, 4:1, 5:1, 6:1, 7:1, 8:1, 10:0.5, 12:1, 13:1, 14:1, 15:1,
+                      16:1, 21:10, 22:10, 24:1, 25:1, 26:1, 27:1, 31:1, 44:1, 47:1, 48:1,
+                      49:1, 60:1, 62:1, 80:1, 81:1, 82:1, 83:1, 84:1, 85:1, 90:1, 91:1,
+                      92:1, 93:1, 100:1};
 
 let CHAR, ENEMY, SKILL, BUFF, CHARS, POTS, WPNS, EQUIPS, SUITS, ENEMIES,
     WSKILL_NAMES, TAKEN_LV, INFLICTION, ENH_FORMULA;
@@ -162,7 +167,8 @@ function _key_fallback(key, bid) {
   return best;
 }
 
-export function buff_mods(bid, mods, zone_adds, bb_override = null, stacks = 1) {
+export function buff_mods(bid, mods, zone_adds, bb_override = null, stacks = 1,
+                          poise_mods = null) {
   const b = BUFF[bid];
   if (!b) return;
   const bl = {...(b.blackboard || {}), ...(bb_override || {})};
@@ -186,6 +192,22 @@ export function buff_mods(bid, mods, zone_adds, bb_override = null, stacks = 1) 
         if (dm.hasCondition) side += '_cond';
         (zone_adds[side][p.zone] = zone_adds[side][p.zone] || []).push(
           _bbval(p.addition, bl) * stacks);
+      }
+    }
+  }
+  if (poise_mods) {
+    for (const pm of (b.poiseMods || [])) {
+      for (const pp of (pm.poiseProcessors || [])) {
+        if (!(pp.__type || '').includes('InstantModifyAttributeForPoise')) continue;
+        const m = pp.modifier || {};
+        const raw_p = m.param || {};
+        const param = raw_p.useBlackboardKey ? {key: raw_p.blackboardKey}
+                                           : (raw_p.value ?? raw_p.valueInt);
+        poise_mods.push({
+          side: (pp.modifyTargetSide || {}).DamageScaleSide,
+          attr: (m.attributeType || {}).AttributeType,
+          mtype: MOD_TYPE[(m.formulaItem || {}).ModifierType],
+          value: _bbval(param, bl) * stacks});
       }
     }
   }
@@ -218,13 +240,13 @@ export function talent_buffs_for(cid, char_break) {
   return out;
 }
 
-function _apply_effects(effs, mods, zone_adds, skill_bb) {
+function _apply_effects(effs, mods, zone_adds, skill_bb, poise_mods = null) {
   for (const eff of effs) {
     const ab = eff.attachBuff || {};
     if (ab.buffId) {
       const ov = {};
       for (const x of (ab.blackboard || [])) ov[x.key] = x.value;
-      buff_mods(ab.buffId, mods, zone_adds, ov);
+      buff_mods(ab.buffId, mods, zone_adds, ov, 1, poise_mods);
     }
     const am = eff.attrModifier || {};
     if (am.attrType)
@@ -246,7 +268,8 @@ export function _skill_bb_at_level(sid, level) {
   return bb;
 }
 
-export function apply_weapon_skill(sid, level, char, mods, zone_adds, apply_buffs = true, stacks = 1) {
+export function apply_weapon_skill(sid, level, char, mods, zone_adds, apply_buffs = true, stacks = 1,
+                                   poise_mods = null) {
   const s = SKILL[sid];
   if (!s || level <= 0) return;
   const bb = _skill_bb_at_level(sid, level);
@@ -269,7 +292,7 @@ export function apply_weapon_skill(sid, level, char, mods, zone_adds, apply_buff
           val = g(bb, String(fk).slice(0, -6), 0) * stacks;
         ov[k] = val;
       }
-      buff_mods(b.buffId, mods, zone_adds, ov);
+      buff_mods(b.buffId, mods, zone_adds, ov, 1, poise_mods);
     }
   }
 }
@@ -295,7 +318,7 @@ export function build_attacker(cid, level, {weapon = null, equips = [], suit_ids
   const base = {};
   for (const [k, v] of Object.entries(row)) base[N2I[k] ?? k] = v;
   if (base[10] === undefined) base[10] = 0.5;
-  const mods = [], skill_bb = {};
+  const mods = [], skill_bb = {}, pm = [];
   const zone_adds = {atk: {}, def: {}, atk_cond: {}, def_cond: {}};
   const wid = (weapon && weapon.id) || c.defaultWeaponId;
   const w = WPNS[wid];
@@ -313,7 +336,7 @@ export function build_attacker(cid, level, {weapon = null, equips = [], suit_ids
         lv = wpn_skill_lv(w, (weapon && weapon.lv !== undefined) ? weapon.lv : w.maxLv, brk, tal, i);
       const n_stk = isObj(sb) ? (sb[sid] ?? 1) : 1;
       const apply_buffs = (sb === undefined || sb === null || sb === true || (isObj(sb) && sid in sb));
-      apply_weapon_skill(sid, lv, c, mods, zone_adds, apply_buffs, n_stk);
+      apply_weapon_skill(sid, lv, c, mods, zone_adds, apply_buffs, n_stk, pm);
     }
   }
   for (const [eid, tier] of equips) {
@@ -332,9 +355,9 @@ export function build_attacker(cid, level, {weapon = null, equips = [], suit_ids
   }
   for (const sid2 of suit_ids)
     for (const bo of ((SUITS[sid2] || {}).bonuses || []))
-      apply_weapon_skill(bo.skillID, bo.skillLv ?? 1, c, mods, zone_adds, suit_buffs);
+      apply_weapon_skill(bo.skillID, bo.skillLv ?? 1, c, mods, zone_adds, suit_buffs, 1, pm);
   for (const p of (POTS[cid] || []))
-    if (p.level <= potential_lv) _apply_effects(p.effects || [], mods, zone_adds, skill_bb);
+    if (p.level <= potential_lv) _apply_effects(p.effects || [], mods, zone_adds, skill_bb, pm);
   const tnodes = ((CHAR.talentNodes || {})[cid]) || {};
   for (const [nid, n] of Object.entries(tnodes)) {
     if (talent_nodes !== null) {
@@ -346,10 +369,10 @@ export function build_attacker(cid, level, {weapon = null, equips = [], suit_ids
       else if (m.modifyAttributeType === 2) a = N2I[c.subAttr] ?? a;
       mods.push([a, m.value, m.modifierType]);
     }
-    _apply_effects(n.effects || [], mods, zone_adds, skill_bb);
+    _apply_effects(n.effects || [], mods, zone_adds, skill_bb, pm);
   }
-  for (const bid of buff_ids) buff_mods(bid, mods, zone_adds);
-  for (const [bid, stacks, bb] of dyn_buffs) buff_mods(bid, mods, zone_adds, bb, stacks);
+  for (const bid of buff_ids) buff_mods(bid, mods, zone_adds, null, 1, pm);
+  for (const [bid, stacks, bb] of dyn_buffs) buff_mods(bid, mods, zone_adds, bb, stacks, pm);
   const attrs = {};
   const attrIds = new Set(Object.keys(base).map(Number));
   for (const m of mods) attrIds.add(+m[0]);
@@ -361,7 +384,7 @@ export function build_attacker(cid, level, {weapon = null, equips = [], suit_ids
                     + Math.floor(g(attrs, sub, 0)) * SUB_RATE
                     + [76, 77, 78, 79].reduce((s, x) => s + g(attrs, x, 0), 0));
   return {attrs, atk_final, zone_adds: zone_adds.atk, zone_cond: zone_adds.atk_cond,
-          skill_bb, char: c, mods, base, weapon_atk: wpn_atk};
+          skill_bb, char: c, mods, base, weapon_atk: wpn_atk, poise_mods: pm};
 }
 
 export function build_defender(eid, level, extra_buffs = []) {
@@ -369,13 +392,13 @@ export function build_defender(eid, level, extra_buffs = []) {
   const row = e.levels[String(level)] || {};
   const base = {};
   for (const [k, v] of Object.entries({...e.attrs, ...row})) base[N2I[k] ?? k] = v;
-  const mods = [];
+  const mods = [], pm = [];
   const zone_adds = {atk: {}, def: {}, atk_cond: {}, def_cond: {}};
   for (const m of (e.attrModifiers || []))
     mods.push([N2I[m.attr] ?? m.attr, m.value, m.modifierType]);
   for (const item of (e.bornBuffs || []).concat(extra_buffs)) {
-    if (Array.isArray(item)) buff_mods(item[0], mods, zone_adds, null, item[1]);
-    else buff_mods(item, mods, zone_adds);
+    if (Array.isArray(item)) buff_mods(item[0], mods, zone_adds, null, item[1], pm);
+    else buff_mods(item, mods, zone_adds, null, 1, pm);
   }
   const attrs = {};
   const attrIds = new Set(Object.keys(base).map(Number));
@@ -383,6 +406,7 @@ export function build_defender(eid, level, extra_buffs = []) {
   for (const a of attrIds)
     attrs[a] = apply_mods(g(base, a, 0.0), mods.filter(m => +m[0] === a));
   return {attrs, zone_adds: zone_adds.def, zone_cond: zone_adds.def_cond,
+          poise_mods: pm,
           maxPoise: g(attrs, 20, 0), maxResilience: g(e, 'maxResilience', 0)};
 }
 
@@ -400,10 +424,58 @@ function _zone_slot(zone, vals) {
   return s;
 }
 
+function _poise_overlay(attrs, pm, side) {
+  // InstantModifyAttributeForPoise → modifyTargetSide==side 인 속성에 적용
+  if (!pm || !pm.length) return attrs;
+  const grp = {};
+  for (const m of pm)
+    if (m.side === side && m.attr != null)
+      (grp[m.attr] = grp[m.attr] || []).push([m.attr, m.value, m.mtype]);
+  const keys = Object.keys(grp);
+  if (!keys.length) return attrs;
+  const out = {...attrs};
+  for (const a of keys) out[a] = apply_mods(g(attrs, +a, g(ATTR_DEFAULT, +a, 0)), grp[a]);
+  return out;
+}
+
+export function compute_poise(hit, skill_bb, A, D, atk_pm = null, def_pm = null) {
+  // poiseCalculation.Evaluate() × attacker.attr26 × defender.attr24
+  // 네이티브: poiseCalc==null → 포이즈 처리 스킵; |result|<=1e-5 → 스킵
+  const pc = hit.poiseCalc;
+  if (!pc) return 0;
+  let base;
+  if (pc === 'DefiniteValueCalculation') {
+    base = _bbval(hit.poiseValue, skill_bb);
+    if (hit.poiseApplyScale) base *= _bbval(hit.poiseScale, skill_bb);
+  } else if (pc === 'MultiplyAttributeCalculation') {
+    const src = hit.poiseSrc ? D : A;
+    base = _bbval(hit.poiseMult, skill_bb) * g(src, hit.poiseAttr ?? 2, 0)
+         + _bbval(hit.poiseAdd, skill_bb);
+  } else if (pc === 'NormalAttackPoiseCalculation') {
+    base = 0;   // 클라이언트 바이너리상 ×0f 스텁 (데이터 미사용)
+  } else {
+    base = _bbval(hit.poiseValue, skill_bb);
+  }
+  if (Math.abs(base) <= 1e-5) return 0;
+  const all_pm = (atk_pm || []).concat(def_pm || []);
+  const A2 = _poise_overlay(A, all_pm, 0);   // side 0 → 공격자 스냅샷
+  const D2 = _poise_overlay(D, all_pm, 1);   // side 1 → 방어자 스냅샷
+  return base * g(A2, 26, 1) * g(D2, 24, 1);
+}
+
 export function compute_hit(hit, skill_bb, atk, dfn,
     {broken = false, crit = false, cond = false, weak = false,
-     manual_mul = 1.0, inflict = false, skill_mult = 1.0} = {}) {
-  const A = atk.attrs, D = dfn.attrs;
+     manual_mul = 1.0, inflict = false, skill_mult = 1.0, blocked = false} = {}) {
+  let A = atk.attrs, D = dfn.attrs;
+  const procs = hit.procs || [];
+  for (const p of procs) {                 // InstantModifyAttribute — 팩 attr 스냅샷에 기록
+    if (p.kind === 'attr' && p.attr != null && !p.modifyAttributeType) {
+      if (A === atk.attrs) { A = {...A}; D = {...D}; }
+      const tgt = p.side ? D : A;
+      tgt[p.attr] = apply_mods(g(tgt, p.attr, 0.0),
+                               [[null, _bbval(p.param, skill_bb), p.modifierType]]);
+    }
+  }
   const t = hit.type;
   let mask = hit.mask;
   if (inflict === 'trigger') mask |= 1 << 14;
@@ -417,7 +489,19 @@ export function compute_hit(hit, skill_bb, atk, dfn,
     calc_result = atk.atk_final * scale;
   } else if (calc === 'DefiniteValueCalculation') {
     scale = _bbval(hit.calcValue, skill_bb);
+    if (hit.calcApplyScale) scale *= _bbval(hit.calcScale, skill_bb);
     calc_result = scale;
+  } else if (calc === 'MultiplyAttributeCalculation') {
+    // calcResult = multiplier(bb) * attrs[attributeType] + addition(bb)
+    // calcSrc: 0=attacker, 1=defender/target
+    const src = hit.calcSrc ? D : A;
+    calc_result = _bbval(hit.calcMult, skill_bb) * g(src, hit.calcAttr ?? 2, 0)
+                + _bbval(hit.calcAdd, skill_bb);
+    scale = atk.atk_final ? calc_result / atk.atk_final : 0;
+  } else if (calc === 'BreakingAttackCalculation') {
+    // calcResult = float(atkScale*multiplier) * float(atk * defender_attr27)
+    scale = (_bbval(hit.calcAtkScale, skill_bb) || 0) * _bbval(hit.calcMult, skill_bb);
+    calc_result = scale * atk.atk_final * g(D, 27, 1);
   } else {
     const raw = hit.atkScale;
     scale = _bbval(raw, skill_bb) || _bbval(hit.calcValue, skill_bb);
@@ -433,6 +517,10 @@ export function compute_hit(hit, skill_bb, atk, dfn,
     for (const [k, v] of Object.entries(dfn.zone_cond || {}))
       zd[k] = (zd[k] || []).concat(v);
   }
+  for (const p of procs)                    // DamageScaleProcessor — 해당 side 존에 addition
+    if (p.kind === 'scale' && p.zone)
+      ((p.side ? zd : za)[p.zone] = (p.side ? zd : za)[p.zone] || []).push(
+        _bbval(p.addition, skill_bb));
   (za[INJECT.dmg] = za[INJECT.dmg] || []).push((t in TYPE_ATTR) ? g(A, TYPE_ATTR[t], 0) : 0);
   (zd[INJECT.vul] = zd[INJECT.vul] || []).push((t in TYPE_VUL) ? g(D, TYPE_VUL[t], 0) : 0);
   (za[INJECT.enh] = za[INJECT.enh] || []).push((t in TYPE_ENH) ? g(A, TYPE_ENH[t], 0) : 0);
@@ -449,20 +537,22 @@ export function compute_hit(hit, skill_bb, atk, dfn,
     zone_scale *= Math.max(0.0, _zone_slot(z, za[z] || []) * _zone_slot(z, zd[z] || []));
   const final_atk = calc_result * zone_scale;
   const common = {calcResult: calc_result, zoneScale: zone_scale, finalAtk: final_atk,
+                  poise: compute_poise(hit, skill_bb, A, D,
+                                       atk.poise_mods, dfn.poise_mods),
                   atkZones: za, defZones: zd, resist: res, taken, type: t,
                   mask, scale};
   if (t === 5) return {...common, damage: final_atk, defTerm: 1.0};
   const d = g(D, 3, 0);
   const def_res = NO_DEF.has(t) ? 1.0 : (d >= 0 ? 1 / (1 + 0.01 * d) : 2 - Math.pow(0.99, Math.abs(d)));
   const dmg = final_atk
-      * g(A, 62, 1)
+      * g(A, 62, 1) * (weak ? 0.8 : 1)
       * (crit ? (1 + g(A, 10, 0.5)) : 1.0)
       * def_res
       * (1 - g(D, 63, 0))
       * type_res
       * ((mask & IGNITE_SET) ? g(A, 49, 1) : 1.0)
       * ((mask & PHYS_INFLICT) ? g(A, 25, 1) : 1.0)
-      * (hit.guardReduce ? (1 - hit.guardRatio) : 1.0)
+      * ((hit.guardReduce && blocked) ? hit.guardRatio : 1.0)
       * manual_mul;
   return {...common, damage: dmg, defTerm: def_res};
 }
