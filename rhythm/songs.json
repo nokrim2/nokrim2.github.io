@@ -25,7 +25,8 @@
    22000,
    25000,
    28000
-  ]
+  ],
+  "pv": "ch3_karaoke_preview"
  },
  "2": {
   "name": "It's TV Time!",
@@ -47,7 +48,8 @@
    41000,
    44000,
    47000
-  ]
+  ],
+  "pv": "tenna_battle_preview"
  },
  "3": {
   "name": "TV Time Tutorial",
@@ -130,7 +132,8 @@
    21000,
    22500,
    24000
-  ]
+  ],
+  "pv": "4rd_sanctuary_preview"
  },
  "35": {
   "name": "Garden of Hopes and Dreams",
@@ -141,6 +144,7 @@
   "tr1": "garden_hopes_no_melody",
   "tr2": "garden_hopes",
   "oaat": true,
+  "pv": "garden_hopes_preview",
   "insts": [
    "vocals",
    "drums",
@@ -163,6 +167,53 @@
   "tr1": "flower_no_melody",
   "tr2": "flower",
   "oaat": true,
+  "pv": "flower_preview",
+  "insts": [
+   "vocals",
+   "drums",
+   "lead"
+  ],
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ]
+ },
+ "8": {
+  "name": "Rude Buster",
+  "bpm": 140,
+  "length": 75.428,
+  "notespeed": 170,
+  "trackstart": 0,
+  "tr1": "battle_no_melody",
+  "tr2": "battle",
+  "oaat": true,
+  "pv": "battle_preview",
+  "insts": [
+   "vocals",
+   "drums",
+   "lead"
+  ],
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ]
+ },
+ "9": {
+  "name": "Field of Hopes and Dreams",
+  "bpm": 125,
+  "length": 161.28,
+  "notespeed": 180,
+  "trackstart": 0,
+  "tr1": "field_of_hopes_no_melody",
+  "tr2": "field_of_hopes",
+  "oaat": true,
+  "pv": "field_of_hopes_preview",
   "insts": [
    "vocals",
    "drums",

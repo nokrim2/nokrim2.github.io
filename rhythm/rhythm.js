@@ -84,6 +84,7 @@ function makeSynth(bpm){
 
 /* ---------- flow ---------- */
 async function start(sid){
+  stopPreview(); selSid = null;
   const s = SONGS[sid];
   G.song = s; G.sid = sid;
   const chart = CHARTS[sid] && CHARTS[sid].lead ? CHARTS[sid].lead : [];
@@ -231,7 +232,7 @@ addEventListener("keydown", e => {
   else if(k === "-" || k === "_"){ G.offset = Math.round((G.offset - 0.01)*1000)/1000; saveOffset(); }
   else if(k === "=" || k === "+"){ G.offset = Math.round((G.offset + 0.01)*1000)/1000; saveOffset(); }
   else if(k === "escape"){ $("menu").classList.remove("hidden"); $("result").classList.add("hidden");
-    G.mode = "menu"; stopAudio(); if(G.synth) G.synth.setMelody(0); }
+    G.mode = "menu"; stopAudio(); if(G.synth) G.synth.setMelody(0); markSel(); }
 });
 addEventListener("keyup", e => {
   const k = e.key.toLowerCase();
@@ -701,14 +702,40 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 
+/* ---------- song preview: fusionmenu-style, loops *_preview.ogg ---------- */
+let previewEl = null, previewSid = null, selSid = null;
+const CAN_HOVER = matchMedia("(hover: hover) and (pointer: fine)").matches;
+function startPreview(sid){
+  const s = SONGS[sid]; if(!s || G.mode !== "menu") return;
+  stopPreview();
+  const el = new Audio(`audio/${s.pv || s.tr2}.ogg?v=19`);
+  el.loop = true; el.volume = 0.75;
+  el.play().catch(() => {});
+  previewEl = el; previewSid = sid;
+}
+function stopPreview(){
+  if(previewEl){ previewEl.pause(); previewEl.src = ""; previewEl = null; }
+  previewSid = null;
+}
+function markSel(){
+  for(const b of $("songlist").children)
+    b.classList.toggle("sel", b.dataset.sid === selSid);
+}
+// touch: tapping outside the list clears the selection + preview
+document.addEventListener("pointerdown", e => {
+  if(!CAN_HOVER && selSid && !e.target.closest("#songlist .songbtn")){
+    selSid = null; markSel(); stopPreview();
+  }
+});
+
 /* ---------- menu ---------- */
 async function boot(){
   try{ G.offset = parseFloat(localStorage.getItem("rhythm_offset")) || 0; }catch(e){}
   try{ await document.fonts.load('32px DRText'); }catch(e){}
   [SONGS, CHARTS, LYRICS] = await Promise.all([
-    fetch("songs.json?v=18").then(r=>r.json()),
-    fetch("charts.json?v=18").then(r=>r.json()),
-    fetch("lyrics.json?v=18").then(r=>r.json()).catch(()=>({})),
+    fetch("songs.json?v=19").then(r=>r.json()),
+    fetch("charts.json?v=19").then(r=>r.json()),
+    fetch("lyrics.json?v=19").then(r=>r.json()).catch(()=>({})),
   ]);
   const list = $("songlist");
   for(const [sid, s] of Object.entries(SONGS)){
@@ -718,7 +745,20 @@ async function boot(){
     const lc = CHARTS[sid].lead;
     const nNotes = lc.dynamic ? lc.main.length + lc.solo[1].length + lc.finale.length : lc.length;
     b.innerHTML = `${s.name.toUpperCase()} <small>${s.bpm} BPM · ${nNotes}${lc.dynamic ? "~" : ""} notes</small>`;
-    b.onclick = () => start(sid);
+    b.dataset.sid = sid;
+    b.addEventListener("pointerenter", e => {
+      if(e.pointerType !== "touch") startPreview(sid);
+    });
+    b.addEventListener("pointerleave", e => {
+      if(e.pointerType !== "touch") stopPreview();
+    });
+    b.onclick = () => {
+      // touch devices (no hover): first tap selects + previews, second tap starts
+      if(!CAN_HOVER && selSid !== sid){
+        selSid = sid; markSel(); startPreview(sid); return;
+      }
+      selSid = null; markSel(); start(sid);
+    };
     list.appendChild(b);
   }
   $("calib").onclick = () => start("3");
@@ -731,5 +771,5 @@ async function boot(){
   requestAnimationFrame(t => { last = t; frame(t); });
 }
 $("retry").onclick = () => start(G.sid);
-$("back").onclick = () => { $("result").classList.add("hidden"); $("menu").classList.remove("hidden"); G.mode = "menu"; };
+$("back").onclick = () => { $("result").classList.add("hidden"); $("menu").classList.remove("hidden"); G.mode = "menu"; markSel(); };
 boot();
