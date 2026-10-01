@@ -127,11 +127,13 @@ async function start(sid){
   // tr1=backing, tr2=full mix / guitar stem. Decoded as buffers for sample-accurate sync.
   // Decode BEFORE the clock starts so trackpos never jumps back.
   G.mode = "loading";
+  try{ history.pushState({rg:1}, ""); }catch(e){}   // back button -> popstate -> openMenu
   $("loadmsg").textContent = "LOADING...";
   G.bufA = await loadBuf(s.tr2);
   G.bufB = s.tr1 !== s.tr2 ? await loadBuf(s.tr1) : null;
   if(G.mode === "menu"){ $("loadmsg").textContent = ""; return; }  // backed out during load
   G.mode = "play";
+  $("menuBtn").classList.remove("hidden");
   $("loadmsg").textContent = "";
   G.t0 = performance.now()/1000 - s.trackstart;
   G.audioStarted = false; G.srcA = null; G.srcB = null; G.srcs = [];
@@ -185,6 +187,7 @@ function saveOffset(){
 
 function end(fail){
   G.mode = fail ? "fail" : "done";
+  $("menuBtn").classList.add("hidden");
   stopAudio();
   const s = G.song;
   // tutorial = calibration song: apply mean hit error to the offset
@@ -230,6 +233,16 @@ function press(l){
 }
 function release(l){ G.laneHeld[l] = false; }
 
+function openMenu(){
+  $("menu").classList.remove("hidden"); $("result").classList.add("hidden");
+  $("menuBtn").classList.add("hidden");
+  G.mode = "menu"; stopAudio(); if(G.synth) G.synth.setMelody(0); markSel();
+}
+// mobile back button: entering play pushes a history entry; back = menu (not page exit)
+addEventListener("popstate", () => {
+  if(G.mode === "play" || G.mode === "loading" || G.mode === "done") openMenu();
+});
+
 addEventListener("keydown", e => {
   if(e.repeat) return;
   const k = e.key.toLowerCase();
@@ -237,8 +250,7 @@ addEventListener("keydown", e => {
   else if(k === "arrowright" || k === "x" || k === "k" || k === "j") press(1);
   else if(k === "-" || k === "_"){ G.offset = Math.round((G.offset - 0.01)*1000)/1000; saveOffset(); }
   else if(k === "=" || k === "+"){ G.offset = Math.round((G.offset + 0.01)*1000)/1000; saveOffset(); }
-  else if(k === "escape"){ $("menu").classList.remove("hidden"); $("result").classList.add("hidden");
-    G.mode = "menu"; stopAudio(); if(G.synth) G.synth.setMelody(0); markSel(); }
+  else if(k === "escape") openMenu();
 });
 addEventListener("keyup", e => {
   const k = e.key.toLowerCase();
@@ -785,4 +797,5 @@ async function boot(){
 }
 $("retry").onclick = () => start(G.sid);
 $("back").onclick = () => { $("result").classList.add("hidden"); $("menu").classList.remove("hidden"); G.mode = "menu"; markSel(); };
+$("menuBtn").onclick = openMenu;
 boot();

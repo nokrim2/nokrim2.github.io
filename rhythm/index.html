@@ -26,6 +26,11 @@
   #menu > :first-child { margin-top: auto; }
   #menu > :last-child  { margin-bottom: auto; }
   .hidden { display: none !important; }
+  #menuBtn { position: absolute; top: 8px; right: 8px; z-index: 5;
+             background: rgba(0,0,0,.55); color: #999; border: 2px solid #444;
+             border-radius: 8px; font-family: inherit; font-size: 26px;
+             padding: 4px 14px; cursor: pointer; }
+  #menuBtn:hover { color: #17EEFF; border-color: #17EEFF; }
   .songbtn { background: none; border: 2px solid #333; color: #ddd; font-family: inherit;
              font-size: 32px; padding: 12px 18px; width: min(84%, 460px); cursor: pointer;
              letter-spacing: 1px; }
@@ -59,6 +64,7 @@
 <h1>RHYTHM</h1>
 <div id="wrap">
   <canvas id="cv" width="1040" height="1360"></canvas>
+  <button id="menuBtn" class="hidden">≡</button>
 
   <div id="menu" class="overlay">
     <div class="dim">* A mysterious jukebox appears.</div>
@@ -68,7 +74,7 @@
       <button id="offset_set" class="songbtn calib" style="width:auto;padding:2px 12px;font-size:16px">적용</button>
     </div>
     <div class="dim" id="loadmsg"></div>
-    <div class="dim">←→ / Z X / D K · 홀드는 길게 누르기<br>모바일: 좌우 터치</div>
+    <div class="dim">←→ / Z X / D K · 홀드는 길게 누르기 · ESC 메뉴<br>모바일: 좌우 터치 · ≡ 버튼/뒤로가기 = 메뉴</div>
     <a href="../">← 허브로</a>
   </div>
 
@@ -82,6 +88,6 @@
 </div>
 <div id="credit">* DELTARUNE and all of its music, artwork and content belong entirely to Toby Fox and Materia Music Publishing.<br>
   이 저작물의 모든 권리는 온전히 Toby Fox, Materia Music Publishing(출판사)의 것입니다. 팬 메이드 레크리에이션이며 원작과 무관합니다.</div>
-<script src="rhythm.js?v=24"></script>
+<script src="rhythm.js?v=25"></script>
 </body>
 </html>
