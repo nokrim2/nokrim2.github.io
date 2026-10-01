@@ -226,5 +226,28 @@
    25000,
    28000
   ]
+ },
+ "37": {
+  "name": "Petal Dance",
+  "bpm": 145,
+  "length": 92.72,
+  "notespeed": 150,
+  "trackstart": -1.6551724137931034,
+  "tr1": "petal_no_melody",
+  "tr2": "petal",
+  "oaat": true,
+  "pv": "petal_preview",
+  "insts": [
+   "vocals",
+   "drums",
+   "lead"
+  ],
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ]
  }
 }

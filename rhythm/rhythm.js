@@ -1,9 +1,12 @@
 "use strict";
 /* DELTARUNE ch5 rhythm minigame — JS port.
- * Faithful to obj_rhythmgame lead chart mechanics:
- *   window ±0.12s, GREAT |dt|<avgdt*1.6 -> 100, GOOD -> 50
- *   miss when note passes trackpos-0.12 -> combo reset, fame penalty
- *   holds: chainPoints = round(len/(notespacing*4)*4)*10, x2 on full hold (min 10)
+ * Faithful to obj_rhythmgame lead chart mechanics (orig fixed 30fps; atu=1/30):
+ *   window ±0.12s, GREAT |dt|<atu*1.6=±53ms -> 100, else GOOD -> 50
+ *   press stays armed 3 frames=100ms (pressedtimer<=room_speed/10), 2-frame debounce
+ *   miss when note passes trackpos-0.12 -> combo break + melody drop;
+ *     fame -= (fame<=2000?100:200)*fame_mul, but only when invc<=0 (2s immunity)
+ *   fame gains scaled by fame_mul = 80/maxnote
+ *   holds: chainPoints = floor(len/(notespacing*4)*4)*10, x2 on full hold
  */
 const $ = id => document.getElementById(id);
 const cv = $("cv"), ctx = cv.getContext("2d");
@@ -11,8 +14,8 @@ const W = 520, H = 680;                 // logical size; canvas is 2x for crispn
 ctx.scale(cv.width / W, cv.height / H);
 
 const NOTE_COLORS = ["#01EA9E", "#17EEFF"];          // lead lanes 0/1
-const HIT_WINDOW = 0.12, PRESS_BUFFER = 0.1;
-const FAME0 = 6000, FAME_MAX = 12000, DIFFICULTY = 5;
+const HIT_WINDOW = 0.12;
+const FAME0 = 6000, FAME_MAX = 12000;
 
 let SONGS = {}, CHARTS = {}, LYRICS = {};
 
@@ -20,11 +23,11 @@ let SONGS = {}, CHARTS = {}, LYRICS = {};
 const G = {
   mode: "menu",            // menu | play | done | fail
   song: null, notes: [],
-  trackpos: 0, remT: [0,0,0,0,0], minnote: 0,
+  trackpos: 0, minnote: 0,
   combo: 0, maxCombo: 0, points: 0,
   great: 0, good: 0, miss: 0,
   fame: FAME0, lastJudge: "", judgeT: 0, lastLaneHit: [0,0],
-  pressedT: [9,9], buffer: [0,0],            // frames-ish timers in seconds
+  pressedT: [9,9], buffer: [0,0], invc: 0,  // frames-ish timers in seconds
   hold: [{start:0,end:0,on:false},{start:0,end:0,on:false}],
   laneHeld: [false,false],
   lyric: "", lyricIdx: 0,
@@ -97,6 +100,7 @@ async function start(sid){
     G.solo = {con:0, diff:-1, ts:s.ts, solo:chart.solo, finale:chart.finale, tAudioNext:null};
   }
   G.notes = noteSrc.map(n => ({t:n[0], lane:n[1], end:n[2], anim:n[3], alive:true, score:0}));
+  G.fameMul = 80 / Math.max(1, G.notes.length);   // orig: fame_mul = 80/maxnote
   // side boards (drums x=170 / vocals x=470 in the original 640-wide room):
   // auto-played visual accompaniment; flat [t,lane,end,anim] lists
   G.side = null;
@@ -113,10 +117,10 @@ async function start(sid){
   G.evNsD = (EV.drums  && EV.drums.ns)  || null;
   G.evNsV = (EV.vocals && EV.vocals.ns) || null;
   G.grid = buildGrid(s, EV.lead || {});
-  G.trackpos = s.trackstart; G.remT = Array(5).fill(s.trackstart);
+  G.trackpos = s.trackstart;
   G.minnote = 0; G.combo = 0; G.maxCombo = 0; G.points = 0;
-  G.great = 0; G.good = 0; G.miss = 0; G.fame = FAME0;
-  G.lastJudge = ""; G.judgeT = 0; G.pressedT = [9,9]; G.buffer = [0,0];
+  G.great = 0; G.good = 0; G.miss = 0; G.fame = FAME0; G.totalFame = FAME0;
+  G.lastJudge = ""; G.judgeT = 0; G.pressedT = [9,9]; G.buffer = [0,0]; G.invc = 0;
   G.hold = [{on:false},{on:false}]; G.laneHeld = [false,false];
   G.lyric = ""; G.lyricIdx = 0;
   G.errs = []; G.errSum = 0; G.lastErr = 0; G.newOffset = null;
@@ -220,7 +224,9 @@ function end(fail){
 /* ---------- input ---------- */
 function press(l){
   if(G.mode !== "play") return;
+  if(G.buffer[l] > 0) return;   // 2-frame input debounce (orig buffer[i]=2)
   G.pressedT[l] = 0; G.laneHeld[l] = true;
+  G.buffer[l] = (G.avgdt || 1/60) * 2;
 }
 function release(l){ G.laneHeld[l] = false; }
 
@@ -280,6 +286,7 @@ function update(dt){
       const extra = so.solo[so.diff].concat(so.finale)
         .map(n => ({t:n[0], lane:n[1], end:n[2], anim:n[3], alive:true, score:0}));
       G.notes = G.notes.concat(extra).sort((a,b) => a.t - b.t);
+      G.fameMul = 80 / G.notes.length;   // recalc on merged chart (orig: 80/maxnote)
       if(G.bufA && G.audioStarted){
         const tS = actx().currentTime + (so.ts[0] - tp);
         const oldA = G.srcA, oldB = G.srcB;
@@ -309,11 +316,11 @@ function update(dt){
     }
     if(so.flash > 0) so.flash -= dt;
   }
-  const rawDt = (tp - G.remT[0] + G.remT[0]-G.remT[1] + G.remT[1]-G.remT[2]) / 3 || 1/60;
-  // original runs at fixed 60fps -> leniency floor is one 60fps frame
-  const avgdt = Math.max(rawDt, 1/60);
-  G.greatWin = avgdt * 1.6;
-  G.remT = [tp, ...G.remT.slice(0,4)];
+  // original ran at fixed room_speed=30 -> atu = one 1/30s frame.
+  // fixed value (not measured dt) so judgment is identical at any refresh rate
+  const avgdt = 1/30;
+  G.avgdt = avgdt;
+  G.greatWin = avgdt * 1.6;   // ±53.3ms
   // judged position: notes hit the line when the player HEARS them ->
   // shift the hit clock by output latency + manual calibration
   const lat = (G.ac ? (G.ac.outputLatency||0) + (G.ac.baseLatency||0) : 0) + G.offset;
@@ -323,6 +330,7 @@ function update(dt){
 
   G.pressedT[0] += dt; G.pressedT[1] += dt;
   G.buffer[0] -= dt; G.buffer[1] -= dt;
+  if(G.invc > 0) G.invc -= dt;
 
   // collect notes in window from minnote
   const target = []; let idx = G.minnote;
@@ -344,21 +352,20 @@ function update(dt){
       if(h.end < tpJudge || !G.laneHeld[i]){
         const holdpos = (tpJudge >= h.end - avgdt*3) ? Math.max(h.end, tpJudge) : tpJudge;
         const ns = 60/s.bpm, span = ns*4;
-        let chain;
-        if(holdpos >= h.end){
-          chain = Math.round(((h.end - h.start)/span)*4)*10*2;
-          chain = Math.max(10, chain);
-        } else {
-          chain = Math.floor(((holdpos - h.start)/span)*4)*10;
-        }
-        G.points += chain; G.fame = Math.min(FAME_MAX, G.fame + chain);
+        let chain = Math.floor(((Math.min(h.end, holdpos) - h.start)/span)*4)*10;
+        if(holdpos >= h.end) chain *= 2;   // completed hold -> score_scale=4, x2
+        else mixMiss();                    // early release drops melody stem (orig: tr2->0)
+        G.points += chain;
+        G.fame = Math.min(FAME_MAX, G.fame + chain*G.fameMul);
+        G.totalFame += chain*G.fameMul;
         h.on = false;
         G.maxCombo = Math.max(G.combo, G.maxCombo);
       }
     }
 
     // press -> judge first alive matching-lane note in window
-    if(G.pressedT[i] <= PRESS_BUFFER){
+    // press stays armed for 3 frames (orig pressedtimer <= room_speed/10)
+    if(G.pressedT[i] <= avgdt*3){
       for(const ni of target){
         const n = G.notes[ni];
         if(n.lane !== i || !n.alive) continue;
@@ -367,19 +374,18 @@ function update(dt){
         const score = Math.abs(acc) < avgdt*1.6 ? 100 : 50;
         n.alive = false; n.score = score;
         G.points += score;
-        G.fame = Math.min(FAME_MAX, G.fame + (score >= 100 ? 100 : (G.fame < 5950 ? 60 : 50)));
+        // fame gain scaled by fame_mul = 80/maxnote (orig: fame += _famegain * fame_mul)
+        G.fame = Math.min(FAME_MAX, G.fame + (score >= 100 ? 100 : (G.fame < 5950 ? 60 : 50)) * G.fameMul);
+        G.totalFame += (score >= 100 ? 100 : (G.fame < 5950 ? 60 : 50)) * G.fameMul;
         if(score >= 100){ G.great++; G.lastJudge = "GREAT"; }
         else { G.good++; G.lastJudge = "GOOD"; }
         G.combo++; G.maxCombo = Math.max(G.combo, G.maxCombo);
         G.judgeT = 0.8; G.lastLaneHit[i] = 6/60;
         mixPlay();
         if(n.end > 0){ G.hold[i] = {start:n.t, end:n.end, on:true}; }
-        G.pressedT[i] = PRESS_BUFFER + 1;   // consume press
-        G.buffer[i] = 2/60;
+        G.pressedT[i] = avgdt*3 + 0.001;   // consume press
         break;
       }
-      // pressed with no note -> just a strum (no penalty, normal mode)
-      if(G.pressedT[i] === 0) G.pressedT[i] = PRESS_BUFFER + 1;
     }
   }
 
@@ -387,14 +393,21 @@ function update(dt){
   while(G.minnote < G.notes.length && G.notes[G.minnote].t < tpJudge - 0.12){
     const n = G.notes[G.minnote];
     if(n.alive && n.score <= 0){
+      // orig (obj_rhythmgame_Draw_0 missnotecon consumer):
+      //   combo break + melody drop on EVERY miss (even during invc)
+      //   fame penalty only when invc<=0: (fame<=2000?100:200)*difficulty(1)*fame_mul
+      //   then invc=60 frames (2s penalty immunity); fame<0 -> lose
       n.alive = false; G.miss++; G.combo = 0;
       G.lastJudge = "MISS"; G.judgeT = 0.8;
-      const pen = (G.fame <= 2000 ? 100 : 200) * DIFFICULTY;
-      G.fame -= pen;
       if(G.synth) G.synth.setMelody(0);
       mixMiss();
-      if(G.fame <= 0 && G.sid !== "3"){ G.fame = 0; end(true); return; }
-      if(G.fame < 0) G.fame = 0;
+      if(G.invc <= 0){
+        const pen = (G.fame <= 2000 ? 100 : 200) * G.fameMul;
+        G.fame -= pen; G.totalFame -= pen;
+        G.invc = 2;
+        if(G.fame < 0 && G.sid !== "3"){ G.fame = 0; end(true); return; }
+        if(G.fame < 0) G.fame = 0;
+      }
     }
     G.minnote++;
   }
@@ -708,7 +721,7 @@ const CAN_HOVER = matchMedia("(hover: hover) and (pointer: fine)").matches;
 function startPreview(sid){
   const s = SONGS[sid]; if(!s || G.mode !== "menu") return;
   stopPreview();
-  const el = new Audio(`audio/${s.pv || s.tr2}.ogg?v=19`);
+  const el = new Audio(`audio/${s.pv || s.tr2}.ogg?v=20`);
   el.loop = true; el.volume = 0.75;
   el.play().catch(() => {});
   previewEl = el; previewSid = sid;
@@ -733,9 +746,9 @@ async function boot(){
   try{ G.offset = parseFloat(localStorage.getItem("rhythm_offset")) || 0; }catch(e){}
   try{ await document.fonts.load('32px DRText'); }catch(e){}
   [SONGS, CHARTS, LYRICS] = await Promise.all([
-    fetch("songs.json?v=19").then(r=>r.json()),
-    fetch("charts.json?v=19").then(r=>r.json()),
-    fetch("lyrics.json?v=19").then(r=>r.json()).catch(()=>({})),
+    fetch("songs.json?v=20").then(r=>r.json()),
+    fetch("charts.json?v=20").then(r=>r.json()),
+    fetch("lyrics.json?v=20").then(r=>r.json()).catch(()=>({})),
   ]);
   const list = $("songlist");
   for(const [sid, s] of Object.entries(SONGS)){
