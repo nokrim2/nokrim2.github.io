@@ -7,4 +7,14 @@
 try{sessionStorage.setItem('u8_token','local-dev');sessionStorage.setItem('server','2')}catch(e){}
 try{if(!new URLSearchParams(location.search).get('lang')){var u=new URL(location.href);u.searchParams.set('lang','ko-kr');history.replaceState(null,'',u)}}catch(e){}
 window.WVSDK={platform:"Qt",ENV:{},callback:{},API:{}};
-</script><script defer src="./index.b69b39.js"></script></body></html>
+try{window.__ORBIPOM_CIRCLE__=localStorage.getItem('orbipom_collision')==='circle'}catch(e){}
+</script><script defer src="./index.b69b39.js"></script>
+<div id="col-toggle" style="position:fixed;right:8px;bottom:8px;z-index:9999;background:rgba(20,22,26,.75);border:1px solid #3a3d45;border-radius:6px;padding:5px 9px;font:12px 'Malgun Gothic',sans-serif;color:#ddd;user-select:none">
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer" title="체크: 뿔/날개 포함 원본 판정 / 해제: 원 판정만 (새 버블부터 적용)"><input type="checkbox" id="col-cb" style="cursor:pointer">뿔/날개 판정</label>
+</div>
+<script>
+(function(){var cb=document.getElementById('col-cb');
+cb.checked=!window.__ORBIPOM_CIRCLE__;
+cb.addEventListener('change',function(){window.__ORBIPOM_CIRCLE__=!cb.checked;try{localStorage.setItem('orbipom_collision',cb.checked?'full':'circle')}catch(e){}});
+})();
+</script></body></html>
