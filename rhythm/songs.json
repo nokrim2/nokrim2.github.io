@@ -26,7 +26,7 @@
    25000,
    28000
   ],
-  "pv": "ch3_karaoke_preview"
+  "pv": "ch3_karaoke_preview_crisp"
  },
  "2": {
   "name": "It's TV Time!",
@@ -49,7 +49,7 @@
    44000,
    47000
   ],
-  "pv": "tenna_battle_preview"
+  "pv": "tenna_battle_preview_crisp"
  },
  "3": {
   "name": "TV Time Tutorial",
@@ -190,7 +190,7 @@
   "tr1": "battle_no_melody",
   "tr2": "battle",
   "oaat": true,
-  "pv": "battle_preview",
+  "pv": "battle_preview_crisp",
   "insts": [
    "vocals",
    "drums",
@@ -213,7 +213,7 @@
   "tr1": "field_of_hopes_no_melody",
   "tr2": "field_of_hopes",
   "oaat": true,
-  "pv": "field_of_hopes_preview",
+  "pv": "field_of_hopes_preview_crisp",
   "insts": [
    "vocals",
    "drums",
