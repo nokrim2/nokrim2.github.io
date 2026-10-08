@@ -86,7 +86,7 @@ function makeSynth(bpm){
 }
 
 /* ---------- flow ---------- */
-async function start(sid){
+async function start(sid, vs){
   stopPreview(); selSid = null;
   const s = SONGS[sid];
   G.song = s; G.sid = sid;
@@ -124,6 +124,7 @@ async function start(sid){
   G.hold = [{on:false},{on:false}]; G.laneHeld = [false,false];
   G.lyric = ""; G.lyricIdx = 0;
   G.errs = []; G.errSum = 0; G.lastErr = 0; G.newOffset = null;
+  G.log = [];                       // input record for versus verification
   // tr1=backing, tr2=full mix / guitar stem. Decoded as buffers for sample-accurate sync.
   // Decode BEFORE the clock starts so trackpos never jumps back.
   G.mode = "loading";
@@ -135,7 +136,9 @@ async function start(sid){
   G.mode = "play";
   $("menuBtn").classList.remove("hidden");
   $("loadmsg").textContent = "";
-  G.t0 = performance.now()/1000 - s.trackstart;
+  if(typeof NET !== "undefined" && NET.on) NET.state = "playing";
+  // versus: both sides anchor trackpos to a shared future instant (negative lead-in)
+  G.t0 = ((vs && vs.at) || performance.now()) / 1000 - s.trackstart;
   G.audioStarted = false; G.srcA = null; G.srcB = null; G.srcs = [];
   if(G.bufA){
     actx().resume();
@@ -188,6 +191,7 @@ function saveOffset(){
 function end(fail){
   G.mode = fail ? "fail" : "done";
   $("menuBtn").classList.add("hidden");
+  $("opp") && $("opp").classList.add("hidden");
   stopAudio();
   const s = G.song;
   // tutorial = calibration song: apply mean hit error to the offset
@@ -196,6 +200,12 @@ function end(fail){
     G.offset = Math.round((G.offset - mean) * 1000) / 1000;
     G.newOffset = G.offset;
     saveOffset();
+  }
+  if(NET.on){   // versus: swap the solo result screen for the scoreboard once both report
+    $("rank").textContent = "…"; $("rank").style.color = "#888";
+    $("result").classList.remove("hidden");
+    netFinish(fail);
+    return;
   }
   if(G.sid === "3"){
     // calibration: no rank/score — just hit stats and the applied offset
@@ -230,12 +240,19 @@ function press(l){
   if(G.buffer[l] > 0) return;   // 2-frame input debounce (orig buffer[i]=2)
   G.pressedT[l] = 0; G.laneHeld[l] = true;
   G.buffer[l] = (G.avgdt || 1/60) * 2;
+  if(G.log) G.log.push([+G.trackpos.toFixed(4), l, 1]);
 }
-function release(l){ G.laneHeld[l] = false; }
+function release(l){
+  G.laneHeld[l] = false;
+  if(G.log && G.mode === "play") G.log.push([+G.trackpos.toFixed(4), l, 0]);
+}
 
 function openMenu(){
   $("menu").classList.remove("hidden"); $("result").classList.add("hidden");
   $("menuBtn").classList.add("hidden");
+  if(typeof NET !== "undefined" && NET.on) netLeave();
+  $("opp") && $("opp").classList.add("hidden");
+  $("retry") && $("retry").classList.remove("hidden");
   G.mode = "menu"; stopAudio(); if(G.synth) G.synth.setMelody(0); markSel();
 }
 // mobile back button: entering play pushes a history entry; back = menu (not page exit)
@@ -424,6 +441,7 @@ function update(dt){
     G.minnote++;
   }
 
+  if(typeof NET !== "undefined" && NET.on) netSnapTick();
   if(tp >= s.length) end(false);
 }
 

@@ -58,6 +58,26 @@
   }
   #credit { color: #555; font-size: 14px; text-align: center; line-height: 1.6;
             padding: 10px 12px 14px; margin-top: auto; }
+  /* ---- versus ---- */
+  #opp { position: absolute; top: 8px; left: 10px; z-index: 4;
+         background: rgba(0,0,0,.55); border: 2px solid #444; border-radius: 8px;
+         color: #ddd; font-size: 20px; padding: 4px 12px; pointer-events: none; }
+  #vs .row { display: flex; gap: 8px; align-items: center; }
+  #vs input { background: #000; border: 2px solid #333; color: #fff;
+              font-family: inherit; font-size: 26px; padding: 6px 10px;
+              width: 180px; text-align: center; letter-spacing: 3px; text-transform: uppercase; }
+  #vs input::placeholder { color: #555; letter-spacing: 0; }
+  #vs .vbtn { background: none; border: 2px solid #333; color: #ddd; font-family: inherit;
+              font-size: 24px; padding: 8px 16px; cursor: pointer; }
+  #vs .vbtn:hover, #vs .vbtn.sel { border-color: #17EEFF; color: #17EEFF; }
+  #vsCode { font-size: 56px; color: #FFED72; letter-spacing: 12px; margin: 4px 0; }
+  #vsStatus { color: #9ADCFF; font-size: 20px; min-height: 1.4em; }
+  #vsSongs { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; }
+  #vsSongs .vbtn { font-size: 18px; }
+  #rec { max-height: 50vh; overflow-y: auto; }
+  #rec table { border-collapse: collapse; font-size: 18px; color: #bbb; margin: auto; }
+  #rec td, #rec th { border: 1px solid #333; padding: 4px 12px; }
+  #rec th { color: #17EEFF; font-weight: normal; }
 </style>
 </head>
 <body>
@@ -65,17 +85,50 @@
 <div id="wrap">
   <canvas id="cv" width="1040" height="1360"></canvas>
   <button id="menuBtn" class="hidden">≡</button>
+  <div id="opp" class="hidden"></div>
 
   <div id="menu" class="overlay">
-    <div class="dim">* 신비한 주크박스가 나타났다.</div>
+    <div class="dim">* A mysterious jukebox appears.</div>
     <div id="songlist"></div>
     <button class="songbtn calib" id="calib">OFFSET CALIBRATION <small>타이밍 보정</small></button>
+    <button class="songbtn calib" id="vsbtn">ONLINE VERSUS <small>온라인 대전</small></button>
+    <button class="songbtn calib" id="recbtn">RECORDS <small>전적 / 랭킹</small></button>
     <div class="dim">OFFSET <input id="offin" type="number" step="5" style="width:70px"> ms
       <button id="offset_set" class="songbtn calib" style="width:auto;padding:2px 12px;font-size:16px">적용</button>
     </div>
     <div class="dim" id="loadmsg"></div>
     <div class="dim">←→ / Z X / D K · 홀드는 길게 누르기 · ESC 메뉴<br>모바일: 좌우 터치 · ≡ 버튼/뒤로가기 = 메뉴</div>
     <a href="../">← 허브로</a>
+  </div>
+
+  <div id="vs" class="overlay hidden">
+    <div class="big" style="font-size:32px">ONLINE VERSUS</div>
+    <div class="row">
+      <span class="dim" style="font-size:18px">닉네임</span>
+      <input id="vsName" maxlength="12" placeholder="PLAYER">
+    </div>
+    <div class="row" id="vsEntry">
+      <button class="vbtn" id="vsHost">방 만들기</button>
+      <input id="vsCodeIn" maxlength="4" placeholder="CODE">
+      <button class="vbtn" id="vsJoin">참가</button>
+    </div>
+    <div id="vsLobby" class="hidden" style="display:flex;flex-direction:column;align-items:center;gap:10px">
+      <div id="vsCode"></div>
+      <div id="vsStatus">상대 대기 중…</div>
+      <div id="vsSongs" class="hidden"></div>
+      <div class="row">
+        <button class="vbtn hidden" id="vsGo">시작</button>
+        <button class="vbtn hidden" id="vsReady">준비</button>
+        <button class="vbtn" id="vsLeave">나가기</button>
+      </div>
+    </div>
+    <button class="vbtn" id="vsClose" style="font-size:16px;border-style:dashed">닫기</button>
+  </div>
+
+  <div id="rec" class="overlay hidden">
+    <div class="big" style="font-size:32px">RECORDS</div>
+    <div id="recBody" class="dim" style="font-size:18px;max-height:60vh;overflow-y:auto"></div>
+    <button class="vbtn" id="recClose" style="font-size:16px;border-style:dashed">닫기</button>
   </div>
 
   <div id="result" class="overlay hidden">
@@ -88,6 +141,132 @@
 </div>
 <div id="credit">* DELTARUNE and all of its music, artwork and content belong entirely to Toby Fox and Materia Music Publishing.<br>
   이 저작물의 모든 권리는 온전히 Toby Fox, Materia Music Publishing(출판사)의 것입니다. 팬 메이드 레크리에이션이며 원작과 무관합니다.</div>
-<script src="rhythm.js?v=25"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js"></script>
+<script src="net.js?v=2"></script>
+<script src="rhythm.js?v=26"></script>
+<script>
+/* ---- versus lobby UI (bridge: DOM <-> net.js) ---- */
+{
+  const $v = id => document.getElementById(id);
+  const vs = $v("vs"), lobby = $v("vsLobby"), entry = $v("vsEntry");
+  const status = t => { $v("vsStatus").innerHTML = t; };
+  netInit();
+  $v("vsName").value = NET.me.name;
+
+  function render(s){
+    const inLobby = s === "lobby" || s === "hosting" || s === "countdown";
+    lobby.classList.toggle("hidden", !inLobby);
+    entry.classList.toggle("hidden", inLobby);
+    $v("vsClose").classList.toggle("hidden", s === "countdown" || s === "playing" || s === "done");
+    if(s === "hosting" && NET.isHost){ $v("vsCode").textContent = NET.code; status("상대 대기 중 — 코드를 공유하세요"); }
+    if(s === "hosting" && !NET.isHost){ $v("vsCode").textContent = NET.code; status("방 확인 중…"); }
+    if(s === "lobby"){
+      $v("vsCode").textContent = NET.code;
+      const opp = NET.opp ? NET.opp.name : "???";
+      const song = NET.sid && SONGS[NET.sid] ? SONGS[NET.sid].name.toUpperCase() : "곡 선택 대기";
+      status(`상대: <b>${opp}</b><br>곡: ${song}` +
+             (NET.isHost ? `<br>상대 ${NET.oppReady ? "준비 완료" : "준비 중…"}` : ""));
+      $v("vsSongs").classList.toggle("hidden", !NET.isHost);
+      $v("vsGo").classList.toggle("hidden", !NET.isHost);
+      $v("vsReady").classList.toggle("hidden", NET.isHost);
+      $v("vsReady").textContent = NET.myReady ? "준비 해제" : "준비";
+      $v("vsReady").classList.toggle("sel", NET.myReady);
+    }
+    if(s === "countdown") vs.classList.add("hidden");
+    if(s === "idle"){ lobby.classList.add("hidden"); entry.classList.remove("hidden"); $v("vsCode").textContent = ""; }
+  }
+  NET.ui = st => {
+    render(st);
+    if(st === "result") vsResultRender();
+  };
+
+  // host song list
+  function buildSongs(){
+    const el = $v("vsSongs"); el.innerHTML = "";
+    for(const [sid, s] of Object.entries(SONGS)){
+      if(sid === "3") continue;
+      const b = document.createElement("button");
+      b.className = "vbtn" + (NET.sid === sid ? " sel" : "");
+      b.textContent = s.name.toUpperCase();
+      b.onclick = () => { netPick(sid); buildSongs(); };
+      el.appendChild(b);
+    }
+  }
+
+  $v("vsbtn").onclick = () => {
+    if(!NET_CFG_OK){ alert("net.js의 SB_URL/SB_KEY를 설정해야 합니다 (Supabase 프로젝트)"); return; }
+    vs.classList.remove("hidden"); render(NET.state);
+  };
+  $v("vsClose").onclick = () => { netLeave(); vs.classList.add("hidden"); };
+  $v("vsLeave").onclick = () => { netLeave(); render("idle"); };
+  $v("vsHost").onclick = () => { netSetName($v("vsName").value); netHost(); };
+  $v("vsJoin").onclick = () => {
+    netSetName($v("vsName").value);
+    const c = $v("vsCodeIn").value.trim();
+    if(c.length !== 4){ status("4자리 코드를 입력하세요"); return; }
+    netJoin(c);
+  };
+  $v("vsReady").onclick = () => netReady(!NET.myReady);
+  $v("vsGo").onclick = () => {
+    if(!NET.opp){ status("상대가 없습니다"); return; }
+    if(!NET.sid){ status("곡을 선택하세요"); return; }
+    if(!NET.oppReady){ status("상대가 준비 중입니다"); return; }
+    netGo();
+  };
+  // build host song list when lobby first shows
+  const _render = render;
+  render = s => { _render(s); if(s === "lobby" && NET.isHost) buildSongs(); };
+
+  /* ---- records panel ---- */
+  $v("recbtn").onclick = async () => {
+    $v("rec").classList.remove("hidden");
+    const body = $v("recBody");
+    body.innerHTML = "불러오는 중…";
+    if(!NET_CFG_OK){ body.innerHTML = "Supabase 미설정"; return; }
+    const r = await netRecords();
+    if(!r){ body.innerHTML = "불러오기 실패"; return; }
+    let h = "<div style='color:#17EEFF;margin-bottom:6px'>— 리더보드 —</div><table><tr><th>#</th><th>NAME</th><th>WINS</th><th>GAMES</th></tr>";
+    r.top.forEach((p, i) => { h += `<tr><td>${i + 1}</td><td>${p.name}</td><td>${p.wins}</td><td>${p.games}</td></tr>`; });
+    h += "</table><div style='color:#17EEFF;margin:12px 0 6px'>— 내 최근 전적 —</div><table><tr><th>날짜</th><th>곡</th><th>상대</th><th>결과</th></tr>";
+    for(const m of r.recent){
+      const mine = m.host_id === NET.me.id ? m.host_result : m.guest_result;
+      const opp = (m.host_id === NET.me.id ? (r.top.find(p => p.id === m.guest_id) || {}) : (r.top.find(p => p.id === m.host_id) || {})).name || "상대";
+      const res = !m.winner ? "무승부" : m.winner === NET.me.id ? "<span style='color:#7CFF9A'>승리</span>" : "<span style='color:#f66'>패배</span>";
+      const d = new Date(m.played_at);
+      h += `<tr><td>${d.getMonth() + 1}/${d.getDate()}</td><td>${(SONGS[m.song_id] || {name:"?"}).name}</td><td>${opp}</td><td>${res} ${mine ? mine.p : ""}</td></tr>`;
+    }
+    body.innerHTML = h + "</table>";
+  };
+  $v("recClose").onclick = () => $v("rec").classList.add("hidden");
+
+  /* versus result: overwrite rank + compare stats */
+  window.vsResultRender = function(){
+    const r = $("rank"), st = $("rStats");
+    if(!NET.myEnd) return;
+    if(!NET.oppEnd && !NET.oppGone){ r.textContent = "…"; r.style.color = "#888"; return; }
+    const w = NET.winner, iWon = w && w.cid === NET.connId;
+    r.textContent = !w ? "DRAW" : (iWon ? "YOU WIN" : "YOU LOSE");
+    r.style.color = !w ? "#888" : (iWon ? "#FFED72" : "#f66");
+    const o = NET.oppEnd;
+    if(o){
+      const mine = NET.myEnd;
+      st.innerHTML =
+        `<table style="margin:auto;border-collapse:collapse;font-size:20px;color:#bbb">
+           <tr><th></th><th style="padding:2px 14px;color:#17EEFF">${NET.me.name}</th>
+               <th style="padding:2px 14px;color:#FF9A3D">${NET.opp ? NET.opp.name : "???"}</th></tr>
+           <tr><td>SCORE</td><td>${mine.p}</td><td>${o.p}</td></tr>
+           <tr><td>GREAT</td><td>${mine.great}</td><td>${o.great}</td></tr>
+           <tr><td>GOOD</td><td>${mine.good}</td><td>${o.good}</td></tr>
+           <tr><td>MISS</td><td>${mine.miss}</td><td>${o.miss}</td></tr>
+           <tr><td>COMBO</td><td>${mine.maxCombo}</td><td>${o.maxCombo}</td></tr>
+         </table>` +
+        (NET.verified ? "<div style='color:#7CFF9A;font-size:14px'>✓ 검증됨</div>"
+                      : "") +
+        (o.failed ? "<div style='color:#f66;font-size:14px'>상대 곡 실패</div>" : "");
+    } else st.innerHTML += "<br><span style='color:#f66'>상대 연결 끊김</span>";
+    $("retry").classList.add("hidden");   // versus has no solo retry
+  };
+}
+</script>
 </body>
 </html>
