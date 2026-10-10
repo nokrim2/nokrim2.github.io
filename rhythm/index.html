@@ -88,11 +88,12 @@
   <div id="opp" class="hidden"></div>
 
   <div id="menu" class="overlay">
-    <div class="dim">* 신기한 주크박스가 나타났다.</div>
+    <div class="dim">* A mysterious jukebox appears.</div>
     <div id="songlist"></div>
     <button class="songbtn calib" id="calib">OFFSET CALIBRATION <small>타이밍 보정</small></button>
     <button class="songbtn calib" id="vsbtn">ONLINE VERSUS <small>온라인 대전</small></button>
     <button class="songbtn calib" id="recbtn">RECORDS <small>전적 / 랭킹</small></button>
+    <button class="songbtn calib hidden" id="edbtn">NOTE EDITOR <small>노트 에디터 (DEV)</small></button>
     <div class="dim">OFFSET <input id="offin" type="number" step="5" style="width:70px"> ms
       <button id="offset_set" class="songbtn calib" style="width:auto;padding:2px 12px;font-size:16px">적용</button>
     </div>
@@ -111,6 +112,13 @@
       <button class="vbtn" id="vsHost">방 만들기</button>
       <input id="vsCodeIn" maxlength="4" placeholder="CODE">
       <button class="vbtn" id="vsJoin">참가</button>
+    </div>
+    <div id="vsRooms" style="display:flex;flex-direction:column;align-items:center;gap:6px">
+      <div class="row">
+        <span class="dim" style="font-size:18px">열린 방</span>
+        <button class="vbtn" id="vsQuick" style="font-size:18px;padding:4px 12px">빠른 입장</button>
+      </div>
+      <div id="vsRoomList" style="display:flex;flex-direction:column;gap:4px;min-height:1.4em"></div>
     </div>
     <div id="vsLobby" class="hidden" style="display:flex;flex-direction:column;align-items:center;gap:10px">
       <div id="vsCode"></div>
@@ -142,21 +150,51 @@
 <div id="credit">* DELTARUNE and all of its music, artwork and content belong entirely to Toby Fox and Materia Music Publishing.<br>
   이 저작물의 모든 권리는 온전히 Toby Fox, Materia Music Publishing(출판사)의 것입니다. 팬 메이드 레크리에이션이며 원작과 무관합니다.</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js"></script>
-<script src="net.js?v=2"></script>
-<script src="rhythm.js?v=26"></script>
+<script src="net.js?v=3"></script>
+<script src="rhythm.js?v=27"></script>
 <script>
 /* ---- versus lobby UI (bridge: DOM <-> net.js) ---- */
 {
   const $v = id => document.getElementById(id);
   const vs = $v("vs"), lobby = $v("vsLobby"), entry = $v("vsEntry");
   const status = t => { $v("vsStatus").innerHTML = t; };
+  const DEV = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ||
+              new URLSearchParams(location.search).has("dev");
+  if(DEV){
+    $v("edbtn").classList.remove("hidden");
+    $v("edbtn").onclick = () => location.href = "editor.html";
+    // returning from a test play -> offer a way back to the editor
+    try{
+      if(sessionStorage.getItem("rhythm_dev_chart")){
+        const b = document.createElement("button");
+        b.className = "songbtn calib"; b.innerHTML = "← 에디터로 돌아가기";
+        b.onclick = () => location.href = "editor.html";
+        $("menu").insertBefore(b, $("menu").lastElementChild);
+      }
+    }catch(e){}
+  }
   netInit();
   $v("vsName").value = NET.me.name;
+
+  let _rooms = [];
+  function renderRooms(rooms){
+    _rooms = rooms;
+    const el = $v("vsRoomList");
+    el.innerHTML = rooms.length ? "" : "<span class='dim' style='font-size:15px'>열린 방 없음 — 방 만들기로 시작하세요</span>";
+    for(const r of rooms){
+      const b = document.createElement("button");
+      b.className = "vbtn"; b.style.fontSize = "18px";
+      b.innerHTML = `${r.name} <b style="color:#FFED72">${r.code}</b>`;
+      b.onclick = () => { netSetName($v("vsName").value); netJoin(r.code); };
+      el.appendChild(b);
+    }
+  }
 
   function render(s){
     const inLobby = s === "lobby" || s === "hosting" || s === "countdown";
     lobby.classList.toggle("hidden", !inLobby);
     entry.classList.toggle("hidden", inLobby);
+    $v("vsRooms").classList.toggle("hidden", inLobby);
     $v("vsClose").classList.toggle("hidden", s === "countdown" || s === "playing" || s === "done");
     if(s === "hosting" && NET.isHost){ $v("vsCode").textContent = NET.code; status("상대 대기 중 — 코드를 공유하세요"); }
     if(s === "hosting" && !NET.isHost){ $v("vsCode").textContent = NET.code; status("방 확인 중…"); }
@@ -196,6 +234,15 @@
   $v("vsbtn").onclick = () => {
     if(!NET_CFG_OK){ alert("net.js의 SB_URL/SB_KEY를 설정해야 합니다 (Supabase 프로젝트)"); return; }
     vs.classList.remove("hidden"); render(NET.state);
+    if(NET.state === "idle") netLobbyWatch(renderRooms);   // live room list while browsing
+  };
+  $v("vsQuick").onclick = () => {
+    if(!_rooms.length){
+      $v("vsRoomList").innerHTML = "<span class='dim' style='font-size:15px'>지금은 열린 방이 없습니다</span>";
+      return;
+    }
+    const r = _rooms[(Math.random() * _rooms.length) | 0];
+    netSetName($v("vsName").value); netJoin(r.code);
   };
   $v("vsClose").onclick = () => { netLeave(); vs.classList.add("hidden"); };
   $v("vsLeave").onclick = () => { netLeave(); render("idle"); };

@@ -60,10 +60,12 @@ function makeSynth(bpm){
   const scale = [0,3,5,7,10,12,12,10,7,5,3,0]; const base = 220;
   let nextBeat = 0, beatN = 0, nextMel = 0, melN = 0;
   function tick(pos){ // schedule ahead of trackpos
+    // suspended context (no user gesture yet): fast-forward counters, don't schedule
+    if(ac.state !== "running"){ nextBeat = nextMel = Math.max(pos + 0.1, nextBeat); return; }
     const now = ac.currentTime, horizon = pos + 0.25;
     while(nextBeat < horizon){
       const dt = nextBeat - pos; if(dt < -0.05){ nextBeat += spb; beatN++; continue; }
-      const t = now + dt;
+      const t = Math.max(now, now + dt);
       const o = ac.createOscillator(), g = ac.createGain();
       o.type = "square"; o.frequency.value = beatN % 4 == 0 ? 110 : 165;
       g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.09);
@@ -72,7 +74,7 @@ function makeSynth(bpm){
     }
     while(nextMel < horizon){
       const dt = nextMel - pos; if(dt < -0.05){ nextMel += spb/2; melN++; continue; }
-      const t = now + dt;
+      const t = Math.max(now, now + dt);
       const o = ac.createOscillator(), g = ac.createGain();
       o.type = "triangle";
       o.frequency.value = base * Math.pow(2, scale[melN % scale.length]/12) * 2;
@@ -90,7 +92,7 @@ async function start(sid, vs){
   stopPreview(); selSid = null;
   const s = SONGS[sid];
   G.song = s; G.sid = sid;
-  const chart = CHARTS[sid] && CHARTS[sid].lead ? CHARTS[sid].lead : [];
+  const chart = (vs && vs.chart) || (CHARTS[sid] && CHARTS[sid].lead ? CHARTS[sid].lead : []);
   // dynamic solo (song 0): only the main section loads now; the chosen solo
   // + finale are merged in at decision time, like scr_rhythmgame_notechart_lead_solo
   let noteSrc = chart;
@@ -279,6 +281,11 @@ const laneAt = x => { const r = cv.getBoundingClientRect(); return (x - r.left) 
 cv.addEventListener("pointerdown", e => { press(laneAt(e.clientX)); cv.setPointerCapture(e.pointerId); });
 cv.addEventListener("pointerup",   e => release(laneAt(e.clientX)));
 cv.addEventListener("pointercancel", e => release(laneAt(e.clientX)));
+// autoplay policy: dev test-play navigates without a user gesture, leaving the
+// AudioContext suspended — resume it on the first real input anywhere
+const resumeAudio = () => { if(G.ac && G.ac.state !== "running") G.ac.resume(); };
+document.addEventListener("pointerdown", resumeAudio);
+document.addEventListener("keydown", resumeAudio);
 
 /* ---------- per-frame update (ported from Step_0) ---------- */
 function update(dt){
@@ -289,7 +296,7 @@ function update(dt){
     G.trackpos = actx().currentTime - G.tAudio;
   else
     G.trackpos = performance.now()/1000 - G.t0;
-  if(G.bufA && !G.audioStarted && G.trackpos >= 0){
+  if(G.bufA && !G.audioStarted && G.trackpos >= 0 && actx().state === "running"){
     const ac = actx(), at = ac.currentTime + 0.02;
     const off = Math.max(0, G.trackpos);               // resume mid-song if needed
     [G.srcA, G.srcB] = startPair(off, at);
@@ -733,6 +740,10 @@ function draw(){
       ctx.fillStyle = "#888"; ctx.font = "26px DRText, monospace"; ctx.textAlign = "center";
       ctx.fillText("READY...", CX, BOTTOM_Y + 30);
     }
+    if(G.ac && G.ac.state !== "running"){
+      ctx.fillStyle = "#FF9A3D"; ctx.font = "20px DRText, monospace"; ctx.textAlign = "right";
+      ctx.fillText("AUDIO OFF — 아무 입력이나 하면 소리 켜짐", W-16, H-16);
+    }
   }
 }
 
@@ -812,6 +823,19 @@ async function boot(){
     if(!isNaN(ms)){ G.offset = Math.round(ms) / 1000; saveOffset(); }
   };
   requestAnimationFrame(t => { last = t; frame(t); });
+  // dev chart test-play: editor.html stashes {sid, song, lead} and lands here via ?play=<sid>
+  try{
+    const raw = sessionStorage.getItem("rhythm_dev_chart");
+    const want = new URLSearchParams(location.search).get("play");
+    if(raw && want){
+      const dev = JSON.parse(raw);
+      if(dev.sid === want){
+        if(dev.song && !SONGS[want]){ SONGS[want] = dev.song; CHARTS[want] = CHARTS[want] || {}; }
+        if(dev.song) CHARTS[want].events = CHARTS[want].events || {};
+        start(want, {chart: dev.lead});
+      }
+    }
+  }catch(e){ console.error("[devtest] failed:", e); }
 }
 $("retry").onclick = () => start(G.sid);
 $("back").onclick = () => { $("result").classList.add("hidden"); $("menu").classList.remove("hidden"); G.mode = "menu"; markSel(); };

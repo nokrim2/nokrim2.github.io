@@ -72,6 +72,7 @@ function netMsg({payload:p}){
     case "hello":       // guest -> host: identity + chart hash
       if(NET.isHost){
         if(NET.opp) { netSend({t:"full"}); return; }
+        netLobbyClose();      // stop advertising once someone joins
         NET.opp = { id:p.id, cid:p.cid, name:p.name };
         netSend({t:"hi", id:NET.me.id, cid:NET.connId, name:NET.me.name});   // host -> guest identity
         setState("lobby");
@@ -147,15 +148,18 @@ async function netOpen(code, role){
 /* ---------- lobby ---------- */
 async function netHost(){
   netInit();
+  netLobbyClose();          // in case we were browsing the room list
   NET.isHost = true; NET.code = mkCode();
   setState("hosting");
   if(!(await netOpen(NET.code, "host"))){ alert("연결 실패: " + (NET.failReason || "")); setState("idle"); return; }
   netRegister();   // player row exists from lobby time — matches FKs depend on it
+  netLobbyAdvertise();   // visible in the open-room list until a guest joins
   // host waits for a guest's hello (sent when guest sees host presence)
 }
 
 async function netJoin(code){
   netInit();
+  netLobbyClose();          // stop browsing once we join
   NET.isHost = false; NET.code = code.toUpperCase().trim();
   setState("hosting");
   if(!(await netOpen(NET.code, "guest"))){ alert("연결 실패: " + (NET.failReason || "")); setState("idle"); return; }
@@ -175,6 +179,38 @@ function netRegister(){   // upsert own player row (FK target for matches/match_
   if(sb()) sb().from("players")
     .upsert({id:NET.me.id, name:NET.me.name, last_seen:new Date().toISOString()})
     .then(({error}) => { if(error) console.warn("player upsert:", error); });
+}
+
+/* ---------- open-room lobby: hosts advertise via presence, guests browse ----------
+   A shared "rhythm-lobby" channel — only waiting hosts track() a room entry,
+   so presence drops automatically when a host leaves/starts. No registry needed. */
+let _lobbyChan = null;
+
+function netLobbyAdvertise(){
+  const c = sb(); if(!c || _lobbyChan) return;
+  _lobbyChan = c.channel("rhythm-lobby");
+  _lobbyChan.subscribe(async st => {
+    if(st === "SUBSCRIBED" && _lobbyChan)
+      await _lobbyChan.track({code:NET.code, name:NET.me.name, t:Date.now()});
+  });
+}
+function netLobbyClose(){
+  if(_lobbyChan && sb()){ try{ sb().removeChannel(_lobbyChan); }catch(e){} }
+  _lobbyChan = null;
+}
+
+// guest side: subscribe and report the open-room list on every presence sync
+function netLobbyWatch(cb){
+  const c = sb(); if(!c || _lobbyChan) return false;
+  _lobbyChan = c.channel("rhythm-lobby");
+  _lobbyChan.on("presence", {event:"sync"}, () => {
+    const rooms = [];
+    for(const pres of Object.values(_lobbyChan.presenceState()).flat())
+      if(pres.code && Date.now() - (pres.t || 0) < 60000)
+        rooms.push({code:pres.code, name:pres.name || "???"});
+    cb && cb(rooms);
+  }).subscribe();
+  return true;
 }
 
 function netClockSync(){   // guest side
@@ -309,6 +345,7 @@ async function netResolve(){
 
 /* ---------- leave / cleanup ---------- */
 function netLeave(){
+  netLobbyClose();
   if(NET.chan){ try{ netSend({t:"gg"}); NET.chan.untrack(); sb().removeChannel(NET.chan); }catch(e){} }
   NET.on = false; NET.chan = null; NET.opp = null; NET.code = null;
   NET.oppReady = NET.myReady = false; NET.oppSnap = null;
