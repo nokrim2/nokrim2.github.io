@@ -26,7 +26,9 @@
    25000,
    28000
   ],
-  "pv": "ch3_karaoke_preview_crisp"
+  "pv": "ch3_karaoke_preview",
+  "ord": 3,
+  "cat": "DELTARUNE"
  },
  "2": {
   "name": "It's TV Time!",
@@ -49,7 +51,9 @@
    44000,
    47000
   ],
-  "pv": "tenna_battle_preview_crisp"
+  "pv": "tenna_battle_preview",
+  "ord": 4,
+  "cat": "DELTARUNE"
  },
  "3": {
   "name": "TV Time Tutorial",
@@ -92,48 +96,9 @@
    40000,
    43000,
    45000
-  ]
- },
- "11": {
-  "name": "Third Sanctuary",
-  "bpm": 170,
-  "length": 129,
-  "notespeed": 120,
-  "trackstart": -2.3823529411764706,
-  "tr1": "rhythm_3rd_sanctuary_noguit",
-  "tr2": "rhythm_3rd_sanctuary_guit",
-  "insts": [
-   "lead"
   ],
-  "rank": [
-   28000,
-   32000,
-   36500,
-   38500,
-   41000
-  ]
- },
- "15": {
-  "name": "4rd Sanctuary",
-  "bpm": 200,
-  "length": 79.2,
-  "notespeed": 180,
-  "trackstart": -2.025,
-  "tr1": "4rd_sanctuary_noguit",
-  "tr2": "4rd_sanctuary",
-  "insts": [
-   "drums",
-   "lead",
-   "vocals"
-  ],
-  "rank": [
-   15500,
-   18500,
-   21000,
-   22500,
-   24000
-  ],
-  "pv": "4rd_sanctuary_preview"
+  "ord": 2,
+  "cat": "DELTARUNE"
  },
  "35": {
   "name": "Garden of Hopes and Dreams",
@@ -156,7 +121,9 @@
    22000,
    25000,
    28000
-  ]
+  ],
+  "ord": 29,
+  "cat": "DELTARUNE"
  },
  "40": {
   "name": "Flower Man",
@@ -179,7 +146,9 @@
    22000,
    25000,
    28000
-  ]
+  ],
+  "ord": 34,
+  "cat": "DELTARUNE"
  },
  "8": {
   "name": "Rude Buster",
@@ -190,7 +159,7 @@
   "tr1": "battle_no_melody",
   "tr2": "battle",
   "oaat": true,
-  "pv": "battle_preview_crisp",
+  "pv": "battle_preview",
   "insts": [
    "vocals",
    "drums",
@@ -202,7 +171,9 @@
    22000,
    25000,
    28000
-  ]
+  ],
+  "ord": 0,
+  "cat": "DELTARUNE"
  },
  "9": {
   "name": "Field of Hopes and Dreams",
@@ -213,7 +184,7 @@
   "tr1": "field_of_hopes_no_melody",
   "tr2": "field_of_hopes",
   "oaat": true,
-  "pv": "field_of_hopes_preview_crisp",
+  "pv": "field_of_hopes_preview",
   "insts": [
    "vocals",
    "drums",
@@ -225,7 +196,9 @@
    22000,
    25000,
    28000
-  ]
+  ],
+  "ord": 1,
+  "cat": "DELTARUNE"
  },
  "37": {
   "name": "Petal Dance",
@@ -248,6 +221,653 @@
    22000,
    25000,
    28000
+  ],
+  "ord": 31,
+  "cat": "DELTARUNE"
+ },
+ "19": {
+  "name": "Third Sanctuary",
+  "bpm": 170,
+  "length": 129,
+  "notespeed": 120,
+  "trackstart": -2.3823529411764706,
+  "tr1": "rhythm_3rd_sanctuary_noguit",
+  "tr2": "rhythm_3rd_sanctuary_guit",
+  "insts": [
+   "lead"
+  ],
+  "rank": [
+   28000,
+   32000,
+   36500,
+   38500,
+   41000
+  ],
+  "ord": 13,
+  "cat": "DELTARUNE"
+ },
+ "32": {
+  "name": "4rd Sanctuary",
+  "bpm": 200,
+  "length": 79.2,
+  "notespeed": 180,
+  "trackstart": -2.025,
+  "tr1": "4rd_sanctuary_noguit",
+  "tr2": "4rd_sanctuary",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ],
+  "rank": [
+   15500,
+   18500,
+   21000,
+   22500,
+   24000
+  ],
+  "pv": "4rd_sanctuary_preview",
+  "ord": 14,
+  "cat": "DELTARUNE"
+ },
+ "11": {
+  "name": "BIG SHOT",
+  "bpm": 140,
+  "length": 141.67,
+  "notespeed": 210,
+  "trackstart": 0,
+  "tr1": "BIG_SHOT_no_melody",
+  "tr2": "BIG_SHOT",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 5,
+  "cat": "DELTARUNE",
+  "pv": "BIG_SHOT_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "12": {
+  "name": "Chaos King",
+  "bpm": 147,
+  "length": 106.5,
+  "notespeed": 160,
+  "trackstart": 0,
+  "tr1": "chaos_king_no_melody",
+  "tr2": "chaos_king",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 6,
+  "cat": "DELTARUNE",
+  "pv": "chaos_king_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "13": {
+  "name": "Attack of the Killer Queen",
+  "bpm": 144,
+  "length": 121.0,
+  "notespeed": 200,
+  "trackstart": 0,
+  "tr1": "killer_queen_no_melody",
+  "tr2": "killer_queen",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 7,
+  "cat": "DELTARUNE",
+  "pv": "killer_queen_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "14": {
+  "name": "The World Revolving",
+  "bpm": 190,
+  "length": 101.55,
+  "notespeed": 210,
+  "trackstart": 0,
+  "tr1": "world_revolving_no_melody",
+  "tr2": "world_revolving",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 8,
+  "cat": "DELTARUNE",
+  "pv": "world_revolving_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "15": {
+  "name": "Don't Forget + Last Goodbye",
+  "bpm": 150,
+  "length": 60.1,
+  "notespeed": 90,
+  "trackstart": 0,
+  "tr1": "dont_forget_last_goodbye",
+  "tr2": "dont_forget_last_goodbye",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 9,
+  "cat": "DELTARUNE",
+  "pv": "dont_forget_last_goodbye",
+  "insts": [
+   "lead",
+   "vocals"
+  ]
+ },
+ "16": {
+  "name": "Hopes And Dreams",
+  "bpm": 171,
+  "length": 182.0,
+  "notespeed": 210,
+  "trackstart": 0,
+  "tr1": "hopes_and_dreams_no_melody",
+  "tr2": "hopes_and_dreams",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 10,
+  "cat": "UNDERTALE",
+  "pv": "hopes_and_dreams_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ],
+  "rainbow": 23.06
+ },
+ "17": {
+  "name": "Dark Sanctuary",
+  "bpm": 190,
+  "length": 106.105,
+  "notespeed": 180,
+  "trackstart": -2.526316,
+  "tr1": "church_wip",
+  "tr2": "church_wip",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 11,
+  "cat": "DELTARUNE",
+  "pv": "church_wip_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "18": {
+  "name": "The Second Sanctuary",
+  "bpm": 170,
+  "length": 166.588,
+  "notespeed": 195,
+  "trackstart": -2.823529,
+  "tr1": "second_church_no_melody",
+  "tr2": "second_church",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 12,
+  "cat": "DELTARUNE",
+  "pv": "second_church_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "20": {
+  "name": "Black Knife",
+  "bpm": 147.5,
+  "length": 117.173,
+  "notespeed": 210,
+  "trackstart": -1.627119,
+  "tr1": "knight_no_melody",
+  "tr2": "knight",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 15,
+  "cat": "DELTARUNE",
+  "pv": "knight_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "31": {
+  "name": "Hammer of Justice",
+  "bpm": 160,
+  "length": 134.12,
+  "notespeed": 190,
+  "trackstart": -1.5,
+  "tr1": "hammer_no_melody",
+  "tr2": "hammer",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 16,
+  "cat": "DELTARUNE",
+  "pv": "hammer_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "21": {
+  "name": "Ghost Fight",
+  "bpm": 225,
+  "length": 57.1,
+  "notespeed": 190,
+  "trackstart": -1.066667,
+  "tr1": "ghost_no_melody",
+  "tr2": "ghost",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 17,
+  "cat": "UNDERTALE",
+  "pv": "ghost_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "22": {
+  "name": "Heartache",
+  "bpm": 239,
+  "length": 110.0,
+  "notespeed": 210,
+  "trackstart": -1.004184,
+  "tr1": "heartache_no_melody",
+  "tr2": "heartache",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 18,
+  "cat": "UNDERTALE",
+  "pv": "heartache_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "23": {
+  "name": "Bonetrousle",
+  "bpm": 150,
+  "length": 58.0,
+  "notespeed": 210,
+  "trackstart": -1.6,
+  "tr1": "bone_no_melody",
+  "tr2": "bone",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 19,
+  "cat": "UNDERTALE",
+  "pv": "bone_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "24": {
+  "name": "Spear of Justice",
+  "bpm": 263,
+  "length": 115.88,
+  "notespeed": 210,
+  "trackstart": -0.912548,
+  "tr1": "spear_no_melody",
+  "tr2": "spear",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 20,
+  "cat": "UNDERTALE",
+  "pv": "spear_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "25": {
+  "name": "Spider Dance",
+  "bpm": 230,
+  "length": 100.26,
+  "notespeed": 200,
+  "trackstart": -1.043478,
+  "tr1": "spider_no_melody",
+  "tr2": "spider",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 21,
+  "cat": "UNDERTALE",
+  "pv": "spider_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "26": {
+  "name": "Death by Glamour",
+  "bpm": 148,
+  "length": 134.58,
+  "notespeed": 230,
+  "trackstart": -1.621622,
+  "tr1": "glamour_no_melody",
+  "tr2": "glamour",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 22,
+  "cat": "UNDERTALE",
+  "pv": "glamour_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "27": {
+  "name": "Song That Might Play When You Fight Sans",
+  "bpm": 240,
+  "length": 60.0,
+  "notespeed": 200,
+  "trackstart": -1.0,
+  "tr1": "stmpwyfs_no_melody",
+  "tr2": "stmpwyfs",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 23,
+  "cat": "UNDERTALE",
+  "pv": "stmpwyfs_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "29": {
+  "name": "Finale",
+  "bpm": 190,
+  "length": 112.41,
+  "notespeed": 200,
+  "trackstart": -1.263158,
+  "tr1": "finale_no_melody",
+  "tr2": "finale",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 25,
+  "cat": "UNDERTALE",
+  "pv": "finale_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "30": {
+  "name": "Megalovania",
+  "bpm": 240,
+  "length": 156.99,
+  "notespeed": 220,
+  "trackstart": -1.0,
+  "tr1": "megalovania_no_melody",
+  "tr2": "megalovania",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 26,
+  "cat": "UNDERTALE",
+  "pv": "megalovania_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "33": {
+  "name": "GUARDIAN",
+  "bpm": 140,
+  "length": 227.0,
+  "notespeed": 220,
+  "trackstart": -1.714286,
+  "tr1": "guardian_no_melody",
+  "tr2": "guardian",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 27,
+  "cat": "DELTARUNE",
+  "pv": "guardian_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "34": {
+  "name": "A DARK ZONE",
+  "bpm": 150,
+  "length": 138.0,
+  "notespeed": 120,
+  "trackstart": 0,
+  "tr1": "dark_zone_no_melody",
+  "tr2": "dark_zone",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 28,
+  "cat": "DELTARUNE",
+  "pv": "dark_zone_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "36": {
+  "name": "Rakuichi Buster",
+  "bpm": 140,
+  "length": 110.0,
+  "notespeed": 150,
+  "trackstart": -1.714286,
+  "tr1": "rakuichi_no_melody",
+  "tr2": "rakuichi",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 30,
+  "cat": "DELTARUNE",
+  "pv": "rakuichi_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "38": {
+  "name": "Sunset of Seven Suns",
+  "bpm": 120,
+  "length": 96.7,
+  "notespeed": 130,
+  "trackstart": -2.0,
+  "tr1": "sunset_no_melody",
+  "tr2": "sunset",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 32,
+  "cat": "DELTARUNE",
+  "pv": "sunset_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
+  ]
+ },
+ "39": {
+  "name": "Cutie Mew Mew Magic",
+  "bpm": 180,
+  "length": 185.0,
+  "notespeed": 200,
+  "trackstart": -1.333333,
+  "tr1": "cutie_no_melody",
+  "tr2": "cutie",
+  "oaat": true,
+  "rank": [
+   14500,
+   18000,
+   22000,
+   25000,
+   28000
+  ],
+  "ord": 33,
+  "cat": "DELTARUNE",
+  "pv": "cutie_preview",
+  "insts": [
+   "drums",
+   "lead",
+   "vocals"
   ]
  }
 }

@@ -40,6 +40,26 @@
                    border-style: dashed; color: #9ADCFF; border-color: #2a3a55; }
   .songbtn.calib:hover, .songbtn.calib:focus { border-color: #9ADCFF; color: #9ADCFF; }
   .songbtn small { color: #666; font-size: 20px; }
+  /* ---- horizontal song doors (category tabs + scrollable card strip) ---- */
+  #songlist { width: 100%; display: flex; flex-direction: column; align-items: center; }
+  #cattabs { display: flex; gap: 8px; margin: 4px 0 2px; flex-wrap: wrap; justify-content: center; }
+  .cattab { background: none; border: 2px solid #333; color: #999; font-family: inherit;
+            font-size: 20px; padding: 4px 14px; cursor: pointer; letter-spacing: 2px; }
+  .cattab.sel, .cattab:hover { border-color: #FFED72; color: #FFED72; }
+  #songstrip { display: flex; gap: 10px; width: 100%; overflow-x: auto; padding: 10px 4px;
+               scrollbar-width: thin; scrollbar-color: #333 transparent; scroll-behavior: smooth; }
+  #songstrip::-webkit-scrollbar { height: 8px; }
+  #songstrip::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+  .songcard { flex: 0 0 auto; width: 190px; min-height: 118px; padding: 10px 8px;
+              background: rgba(255,255,255,.03); border: 2px solid #333; color: #ddd;
+              font-family: inherit; cursor: pointer; display: flex; flex-direction: column;
+              align-items: center; justify-content: center; gap: 5px; text-align: center; }
+  .songcard:hover { border-color: #17EEFF; }
+  .songcard.sel { border-color: #17EEFF; }
+  .songcard.sel .nm { color: #17EEFF; }
+  .songcard .rk { font-size: 28px; min-height: 1.1em; }
+  .songcard .nm { font-size: 19px; line-height: 1.25; letter-spacing: 1px; }
+  .songcard .mt { font-size: 14px; color: #666; }
   .big { font-size: 48px; color: #FFED72; }
   .dim { color: #888; font-size: 24px; line-height: 1.7; }
   #rank { font-size: 110px; margin: 6px 0; }
@@ -49,6 +69,10 @@
     .overlay { gap: 8px; }
     .songbtn { font-size: 22px; padding: 9px 12px; width: min(88%, 420px); }
     .songbtn small { font-size: 14px; }
+    .cattab { font-size: 15px; padding: 3px 10px; }
+    .songcard { width: 150px; min-height: 104px; }
+    .songcard .nm { font-size: 15px; }
+    .songcard .mt { font-size: 12px; }
     .songbtn.calib { font-size: 16px; width: min(76%, 320px); }
     .big { font-size: 32px; }
     .dim { font-size: 16px; }
@@ -151,7 +175,7 @@
   이 저작물의 모든 권리는 온전히 Toby Fox, Materia Music Publishing(출판사)의 것입니다. 팬 메이드 레크리에이션이며 원작과 무관합니다.</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js"></script>
 <script src="net.js?v=3"></script>
-<script src="rhythm.js?v=27"></script>
+<script src="rhythm.js?v=28"></script>
 <script>
 /* ---- versus lobby UI (bridge: DOM <-> net.js) ---- */
 {
@@ -221,7 +245,9 @@
   // host song list
   function buildSongs(){
     const el = $v("vsSongs"); el.innerHTML = "";
-    for(const [sid, s] of Object.entries(SONGS)){
+    const sorted = Object.entries(SONGS)
+      .sort((a, b) => (a[1].ord ?? 999) - (b[1].ord ?? 999) || a[1].name.localeCompare(b[1].name));
+    for(const [sid, s] of sorted){
       if(sid === "3") continue;
       const b = document.createElement("button");
       b.className = "vbtn" + (NET.sid === sid ? " sel" : "");

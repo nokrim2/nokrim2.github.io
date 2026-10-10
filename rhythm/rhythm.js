@@ -14,6 +14,13 @@ const W = 520, H = 680;                 // logical size; canvas is 2x for crispn
 ctx.scale(cv.width / W, cv.height / H);
 
 const NOTE_COLORS = ["#01EA9E", "#17EEFF"];          // lead lanes 0/1
+// rainbow_mode (orig scr_rhythmgame_get_rainbow_color): hue spins 180deg/s of
+// trackpos, phase offset i*0.1s per element; sin-based pastel channels
+function rainbowCol(i, tp){
+  const h = (((tp + i * 0.1) * 180) % 360) * Math.PI / 180;
+  const c = k => ((Math.sin(h + k) + 1) * 0.5 * 0.7 + 0.3) * 255 | 0;
+  return `rgb(${c(0)},${c(2.094)},${c(4.189)})`;   // sin(h+120deg),(h+240deg)
+}
 const HIT_WINDOW = 0.12;
 const FAME0 = 6000, FAME_MAX = 12000;
 
@@ -88,10 +95,14 @@ function makeSynth(bpm){
 }
 
 /* ---------- flow ---------- */
+const RANK_NAMES = ["Z","C","B","A","S","T"];
+const RANK_COLS  = ["#666","#9ADCFF","#7CFF9A","#FFED72","#FF9A3D","#FF5AD0"];
+
 async function start(sid, vs){
   stopPreview(); selSid = null;
   const s = SONGS[sid];
   G.song = s; G.sid = sid;
+  G.devPlay = !!(vs && vs.chart);
   const chart = (vs && vs.chart) || (CHARTS[sid] && CHARTS[sid].lead ? CHARTS[sid].lead : []);
   // dynamic solo (song 0): only the main section loads now; the chosen solo
   // + finale are merged in at decision time, like scr_rhythmgame_notechart_lead_solo
@@ -225,10 +236,15 @@ function end(fail){
   }
   const th = s.rank, p = G.points;
   const rank = fail ? 0 : (p >= th[4] ? 5 : th.findIndex(x => p < x));
-  const names = ["Z","C","B","A","S","T"];
-  const cols  = ["#666","#9ADCFF","#7CFF9A","#FFED72","#FF9A3D","#FF5AD0"];
-  $("rank").textContent = names[rank] + "-RANK";
-  $("rank").style.color = cols[rank];
+  if(!fail && !G.devPlay){          // best rank shown on the song door (localStorage)
+    try{
+      const k = "rhythm_best_" + G.sid;
+      const prev = JSON.parse(localStorage.getItem(k) || "null");
+      if(!prev || G.points > prev.p) localStorage.setItem(k, JSON.stringify({p: G.points, rank}));
+    }catch(e){}
+  }
+  $("rank").textContent = RANK_NAMES[rank] + "-RANK";
+  $("rank").style.color = RANK_COLS[rank];
   $("rSong").textContent = s.name.toUpperCase();
   $("rStats").innerHTML =
     `SCORE ${G.points}<br>GREAT ${G.great} · GOOD ${G.good} · MISS ${G.miss}<br>`+
@@ -255,7 +271,8 @@ function openMenu(){
   if(typeof NET !== "undefined" && NET.on) netLeave();
   $("opp") && $("opp").classList.add("hidden");
   $("retry") && $("retry").classList.remove("hidden");
-  G.mode = "menu"; stopAudio(); if(G.synth) G.synth.setMelody(0); markSel();
+  G.mode = "menu"; stopAudio(); if(G.synth) G.synth.setMelody(0);
+  if(_rebuildStrip) _rebuildStrip();   // refresh rank badges earned during play
 }
 // mobile back button: entering play pushes a history entry; back = menu (not page exit)
 addEventListener("popstate", () => {
@@ -629,9 +646,10 @@ function draw(){
     ctx.strokeRect(CX-80, BOTTOM_Y-400, 160, 450);
 
     // --- note receptors: outlined rounded rects at hit line (in-game look) ---
+    const rb = s.rainbow != null && tpDraw >= s.rainbow;   // rainbow_mode event
     for(let i = 0; i < 2; i++){
       const x = laneX(i), hit = G.lastLaneHit[i] > 0;
-      ctx.strokeStyle = hit ? "#FFED72" : NOTE_COLORS[i];
+      ctx.strokeStyle = hit ? "#FFED72" : (rb ? rainbowCol(i, tpDraw) : NOTE_COLORS[i]);
       ctx.lineWidth = hit ? 3 : 2;
       rrect(x-30, BOTTOM_Y-10, 60, 20, 6); ctx.stroke();
       if(hit){
@@ -687,16 +705,19 @@ function draw(){
     ctx.restore();
 
     // HUD (score hidden on the calibration song)
-    ctx.fillStyle = "#fff"; ctx.font = "32px DRText, monospace"; ctx.textAlign = "left";
+    ctx.fillStyle = rb ? rainbowCol(3, tpDraw) : "#fff";
+    ctx.font = "32px DRText, monospace"; ctx.textAlign = "left";
     if(G.sid !== "3") ctx.fillText("SCORE " + G.points, 16, 38);
     if(G.combo > 1){
       ctx.font = "bold 60px DRText, monospace"; ctx.textAlign = "center";
-      ctx.fillStyle = "#ccc"; ctx.fillText(G.combo, CX, BOTTOM_Y-310);
+      ctx.fillStyle = rb ? rainbowCol(4, tpDraw) : "#ccc";
+      ctx.fillText(G.combo, CX, BOTTOM_Y-310);
       ctx.font = "24px DRText, monospace"; ctx.fillText("COMBO", CX, BOTTOM_Y-282);
     }
     // fame meter
     ctx.fillStyle = "#222"; ctx.fillRect(16, 52, 140, 12);
-    ctx.fillStyle = G.fame > 4000 ? "#01EA9E" : (G.fame > 2000 ? "#FFED72" : "#FF5A5A");
+    ctx.fillStyle = rb ? rainbowCol(2, tpDraw)
+                     : (G.fame > 4000 ? "#01EA9E" : (G.fame > 2000 ? "#FFED72" : "#FF5A5A"));
     ctx.fillRect(16, 52, 140 * (G.fame / FAME_MAX), 12);
     ctx.strokeStyle = "#555"; ctx.strokeRect(16, 52, 140, 12);
     ctx.fillStyle = "#888"; ctx.font = "20px DRText, monospace"; ctx.textAlign = "left";
@@ -757,7 +778,7 @@ function frame(now){
 }
 
 /* ---------- song preview: fusionmenu-style, loops *_preview.ogg ---------- */
-let previewEl = null, previewSid = null, selSid = null;
+let previewEl = null, previewSid = null, selSid = null, _rebuildStrip = null;
 const CAN_HOVER = matchMedia("(hover: hover) and (pointer: fine)").matches;
 function startPreview(sid){
   const s = SONGS[sid]; if(!s || G.mode !== "menu") return;
@@ -772,12 +793,12 @@ function stopPreview(){
   previewSid = null;
 }
 function markSel(){
-  for(const b of $("songlist").children)
+  for(const b of document.querySelectorAll("#songlist .songcard"))
     b.classList.toggle("sel", b.dataset.sid === selSid);
 }
 // touch: tapping outside the list clears the selection + preview
 document.addEventListener("pointerdown", e => {
-  if(!CAN_HOVER && selSid && !e.target.closest("#songlist .songbtn")){
+  if(!CAN_HOVER && selSid && !e.target.closest("#songlist .songcard")){
     selSid = null; markSel(); stopPreview();
   }
 });
@@ -787,34 +808,70 @@ async function boot(){
   try{ G.offset = parseFloat(localStorage.getItem("rhythm_offset")) || 0; }catch(e){}
   try{ await document.fonts.load('32px DRText'); }catch(e){}
   [SONGS, CHARTS, LYRICS] = await Promise.all([
-    fetch("songs.json?v=20").then(r=>r.json()),
-    fetch("charts.json?v=20").then(r=>r.json()),
-    fetch("lyrics.json?v=20").then(r=>r.json()).catch(()=>({})),
+    fetch("songs.json?v=21").then(r=>r.json()),
+    fetch("charts.json?v=21").then(r=>r.json()),
+    fetch("lyrics.json?v=21").then(r=>r.json()).catch(()=>({})),
   ]);
   const list = $("songlist");
-  for(const [sid, s] of Object.entries(SONGS)){
-    if(sid === "3") continue;    // tutorial = offset calibration tool, not a ranked song
-    const b = document.createElement("button");
-    b.className = "songbtn";
-    const lc = CHARTS[sid].lead;
-    const nNotes = lc.dynamic ? lc.main.length + lc.solo[1].length + lc.finale.length : lc.length;
-    b.innerHTML = `${s.name.toUpperCase()} <small>${s.bpm} BPM · ${nNotes}${lc.dynamic ? "~" : ""} notes</small>`;
-    b.dataset.sid = sid;
-    b.addEventListener("pointerenter", e => {
-      if(e.pointerType !== "touch") startPreview(sid);
-    });
-    b.addEventListener("pointerleave", e => {
-      if(e.pointerType !== "touch") stopPreview();
-    });
-    b.onclick = () => {
-      // touch devices (no hover): first tap selects + previews, second tap starts
-      if(!CAN_HOVER && selSid !== sid){
-        selSid = sid; markSel(); startPreview(sid); return;
-      }
-      selSid = null; markSel(); start(sid);
+  // horizontal song doors, ordered like scr_rhythmgame_songlist (ord field),
+  // grouped into franchise tabs (cat field, like the fusion menu albums)
+  const order = Object.entries(SONGS)
+    .filter(([sid]) => sid !== "3" && CHARTS[sid] && CHARTS[sid].lead)   // sid 3 = calibration tool
+    .sort((a, b) => (a[1].ord ?? 999) - (b[1].ord ?? 999) || a[1].name.localeCompare(b[1].name));
+  const cats = [...new Set(order.map(([, s]) => s.cat || "MISC"))];
+  const tabs = document.createElement("div"); tabs.id = "cattabs";
+  const strip = document.createElement("div"); strip.id = "songstrip";
+  list.append(tabs, strip);
+  const buildStrip = cat => {
+    strip.innerHTML = "";
+    for(const [sid, s] of order){
+      if((s.cat || "MISC") !== cat) continue;
+      const b = document.createElement("button");
+      b.className = "songcard";
+      const lc = CHARTS[sid].lead;
+      const nNotes = lc.dynamic ? lc.main.length + lc.solo[1].length + lc.finale.length : lc.length;
+      let best = null;
+      try{ best = JSON.parse(localStorage.getItem("rhythm_best_" + sid)); }catch(e){}
+      b.innerHTML =
+        `<div class="rk" style="color:${best ? RANK_COLS[best.rank] : "#333"}">${best ? RANK_NAMES[best.rank] : "─"}</div>`+
+        `<div class="nm">${s.name.toUpperCase()}</div>`+
+        `<div class="mt">${s.bpm} BPM · ${nNotes}${lc.dynamic ? "~" : ""}</div>`;
+      b.dataset.sid = sid;
+      b.addEventListener("pointerenter", e => {
+        if(e.pointerType !== "touch") startPreview(sid);
+      });
+      b.addEventListener("pointerleave", e => {
+        if(e.pointerType !== "touch") stopPreview();
+      });
+      b.onclick = () => {
+        // touch devices (no hover): first tap selects + previews, second tap starts
+        if(!CAN_HOVER && selSid !== sid){
+          selSid = sid; markSel(); startPreview(sid); return;
+        }
+        selSid = null; markSel(); start(sid);
+      };
+      strip.appendChild(b);
+    }
+    markSel();
+  };
+  let curCat = cats[0];
+  for(const c of cats){
+    const t = document.createElement("button");
+    t.className = "cattab" + (c === cats[0] ? " sel" : "");
+    t.textContent = c;
+    t.onclick = () => {
+      curCat = c;
+      for(const x of tabs.children) x.classList.toggle("sel", x === t);
+      buildStrip(c);
     };
-    list.appendChild(b);
+    tabs.appendChild(t);
   }
+  buildStrip(curCat);
+  _rebuildStrip = () => buildStrip(curCat);
+  strip.addEventListener("wheel", e => {   // vertical wheel scrolls the strip sideways
+    e.preventDefault();
+    strip.scrollLeft += e.deltaY + e.deltaX;
+  }, {passive: false});
   $("calib").onclick = () => start("3");
   const offin = $("offin");
   offin.value = Math.round(G.offset * 1000);
